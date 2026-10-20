@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>My Pure Custom IDX</title>
+    <style>
+        body { margin: 0; display: flex; flex-direction: column; height: 100vh; background: #121212; color: #fff; font-family: monospace; }
+        header { background: #1e1e1e; padding: 10px; display: flex; gap: 10px; border-bottom: 1px solid #333; }
+        select, button { background: #333; color: #fff; border: 1px solid #555; padding: 5px 10px; cursor: pointer; }
+        #run-btn { background: #238636; border: none; font-weight: bold; }
+        #container { display: flex; flex: 1; }
+        #editor { flex: 1; width: 50%; background: #181818; color: #00ff66; padding: 15px; font-size: 14px; border: none; outline: none; resize: none; }
+        #output { flex: 1; width: 50%; background: #000; color: #ccc; padding: 15px; border-left: 1px solid #333; overflow-y: auto; white-space: pre-wrap; }
+    </style>
+</head>
+<body>
+    <header>
+        <strong>Custom IDX</strong>
+        <select id="lang">
+            <option value="csharp">C# (.NET 8)</option>
+            <option value="python">Python 3</option>
+        </select>
+        <button id="run-btn">▶ 実行 (Run)</button>
+    </header>
+    <div id="container">
+        <textarea id="editor" spellcheck="false"></textarea>
+        <div id="output">// 実行結果がここに出力されます</div>
+    </div>
+
+    <script>
+        const editor = document.getElementById('editor');
+        const output = document.getElementById('output');
+        const lang = document.getElementById('lang');
+
+        const templates = {
+            csharp: 'using System;\n\nclass Program {\n    static void Main() {\n        Console.WriteLine("Hello from 100% 自作 IDX!");\n    }\n}',
+            python: 'print("Hello from 100% 自作 IDX (Python)!")'
+        };
+
+        editor.value = templates.csharp;
+        lang.onchange = () => editor.value = templates[lang.value];
+
+        document.getElementById('run-btn').onclick = async () => {
+            output.innerText = "コンパイル & 実行中...";
+            try {
+                const res = await fetch('/api/run', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ language: lang.value, code: editor.value })
+                });
+                output.innerText = await res.text();
+            } catch (e) {
+                output.innerText = "エラー: " + e;
+            }
+        };
+    </script>
+</body>
+</html>
