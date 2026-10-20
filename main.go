@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	"os"
 	"os/exec"
@@ -120,7 +119,7 @@ func main() {
 		w.Write([]byte("OK"))
 	})
 
-	// ★ 1. ファイル / フォルダ削除 API
+	// ファイル / フォルダ削除 API
 	http.HandleFunc("/api/delete", func(w http.ResponseWriter, r *http.Request) {
 		var req DeleteRequest
 		json.NewDecoder(r.Body).Decode(&req)
@@ -133,7 +132,7 @@ func main() {
 		w.Write([]byte("OK"))
 	})
 
-	// ★ 2. 対話型ターミナル実行 API (任意のLinuxコマンド)
+	// 対話型ターミナル実行 API
 	http.HandleFunc("/api/cmd", func(w http.ResponseWriter, r *http.Request) {
 		var req CmdRequest
 		json.NewDecoder(r.Body).Decode(&req)
