@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>Alpine Custom IDX - Native Logic & SwiftUI Engine</title>
+    <title>Alpine Custom Project IDX</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs/editor/editor.main.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -13,9 +13,10 @@
         .act-btn { width: 48px; height: 48px; display: flex; justify-content: center; align-items: center; color: #858585; cursor: pointer; font-size: 20px; transition: 0.2s; }
         .act-btn:hover, .act-btn.active { color: #ffffff; }
         .act-btn.run-btn { color: #4ec9b0; }
+        .act-btn.run-btn:hover { color: #85e8d3; transform: scale(1.1); }
         .act-btn.ui-btn { color: #e5c07b; }
 
-        #sidebar { width: 220px; background: #252526; display: flex; flex-direction: column; border-right: 1px solid #191919; }
+        #sidebar { width: 230px; background: #252526; display: flex; flex-direction: column; border-right: 1px solid #191919; }
         #sidebar-header { padding: 10px 15px; font-size: 11px; font-weight: bold; text-transform: uppercase; color: #bbbbbb; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #2d2d2d; }
         .sidebar-actions i { margin-left: 10px; cursor: pointer; }
         .sidebar-actions i:hover { color: #fff; }
@@ -32,16 +33,14 @@
         #editor-container { flex: 1; height: 100%; position: relative; }
         #monaco-editor { width: 100%; height: 100%; }
 
-        /* 右側：スマホ型プレビューパネル */
+        /* 右側プレビュー */
         #preview-panel { width: 420px; height: 100%; background: #121212; border-left: 2px solid #333; display: flex; flex-direction: column; align-items: center; padding: 10px; }
         #preview-header { width: 100%; height: 26px; color: #aaa; display: flex; align-items: center; justify-content: space-between; font-size: 11px; margin-bottom: 5px; }
         
-        /* iPhone筐体デザインシミュレータ */
-        #phone-shell { width: 340px; height: calc(100% - 35px); background: #000; border: 8px solid #333; border-radius: 40px; overflow: hidden; position: relative; box-shadow: 0 10px 30px rgba(0,0,0,0.8); display: flex; flex-direction: column; }
-        #notch { width: 120px; height: 18px; background: #333; position: absolute; top: 0; left: 50%; transform: translateX(-50%); border-bottom-left-radius: 12px; border-bottom-right-radius: 12px; z-index: 1000; }
+        #preview-viewport { width: 100%; height: calc(100% - 35px); background: #000; border: 2px solid #444; border-radius: 8px; overflow: hidden; position: relative; box-shadow: 0 8px 24px rgba(0,0,0,0.7); display: flex; flex-direction: column; }
         #preview-frame { flex: 1; border: none; width: 100%; height: 100%; background: #fff; }
 
-        #terminal-panel { height: 160px; background: #181818; border-top: 1px solid #333; display: flex; flex-direction: column; }
+        #terminal-panel { height: 170px; background: #181818; border-top: 1px solid #333; display: flex; flex-direction: column; }
         #terminal-header { height: 26px; background: #222222; display: flex; align-items: center; justify-content: space-between; padding: 0 12px; font-size: 11px; font-weight: bold; color: #aaa; }
         #terminal-output { flex: 1; padding: 10px; font-family: "Consolas", monospace; font-size: 13px; color: #d4d4d4; overflow-y: auto; white-space: pre-wrap; }
 
@@ -62,14 +61,14 @@
     <!-- 1. Activity Bar -->
     <div id="activity-bar">
         <div class="act-btn active" title="Explorer"><i class="fa-regular fa-copy"></i></div>
-        <div class="act-btn run-btn" id="sidebar-run-btn" title="Alpineで実行 (Run)"><i class="fa-solid fa-play"></i></div>
-        <div class="act-btn ui-btn" id="toggle-preview-btn" title="Simulator 表示/非表示"><i class="fa-solid fa-mobile-screen-button"></i></div>
+        <div class="act-btn run-btn" id="sidebar-run-btn" title="プロジェクト丸ごとビルド＆実行 (Run Project)"><i class="fa-solid fa-play"></i></div>
+        <div class="act-btn ui-btn" id="toggle-preview-btn" title="UI プレビュー切り替え"><i class="fa-solid fa-window-restore"></i></div>
     </div>
 
     <!-- 2. Sidebar -->
     <div id="sidebar">
         <div id="sidebar-header">
-            <span>EXPLORER</span>
+            <span>PROJECT EXPLORER</span>
             <div class="sidebar-actions">
                 <i class="fa-solid fa-file-circle-plus" id="new-file-btn" title="新規ファイル"></i>
                 <i class="fa-solid fa-folder-plus" id="new-folder-btn" title="新規フォルダ"></i>
@@ -88,7 +87,7 @@
             </div>
             <div>
                 <button id="render-ui-btn" style="background:#007acc; color:#fff; border:none; padding:4px 10px; font-size:11px; cursor:pointer; border-radius:2px;">
-                    <i class="fa-solid fa-rotate-right"></i> シミュレータ再読込
+                    <i class="fa-solid fa-rotate-right"></i> UI更新
                 </button>
             </div>
         </div>
@@ -98,25 +97,25 @@
                 <div id="monaco-editor"></div>
             </div>
 
-            <!-- スマホ画面シミュレータ -->
+            <!-- UI プレビュー -->
             <div id="preview-panel">
                 <div id="preview-header">
-                    <span><i class="fa-brands fa-apple"></i> SwiftUI Interactive Runtime</span>
-                    <span id="preview-status" style="color:#4ec9b0;">Live Active</span>
+                    <span id="preview-title"><i class="fa-solid fa-layer-group"></i> Native UI Simulator</span>
+                    <span id="preview-status" style="color:#4ec9b0;">Interactive</span>
                 </div>
-                <div id="phone-shell">
-                    <div id="notch"></div>
+                <div id="preview-viewport">
                     <iframe id="preview-frame" sandbox="allow-scripts allow-modals"></iframe>
                 </div>
             </div>
         </div>
 
+        <!-- ターミナル -->
         <div id="terminal-panel">
             <div id="terminal-header">
-                <span>TERMINAL OUTPUT</span>
+                <span>PROJECT BUILD OUTPUT</span>
                 <span id="clear-term" style="cursor:pointer;"><i class="fa-solid fa-ban"></i></span>
             </div>
-            <div id="terminal-output">// 準備完了</div>
+            <div id="terminal-output">// [▶] ボタンでディレクトリ全体のプロジェクトを一括ビルド＆実行します</div>
         </div>
     </div>
 
@@ -126,56 +125,13 @@
         let activePath = "";
         const output = document.getElementById("terminal-output");
         const previewFrame = document.getElementById("preview-frame");
+        const previewTitle = document.getElementById("preview-title");
 
         const langMap = {
             'cs': 'csharp', 'py': 'python', 'go': 'go', 'rs': 'rust',
             'cpp': 'cpp', 'c': 'c', 'js': 'javascript', 'html': 'html',
-            'kt': 'kotlin', 'swift': 'swift'
+            'kt': 'kotlin', 'swift': 'swift', 'qml': 'javascript'
         };
-
-        // 初期サンプルの本物SwiftUIコード
-        const defaultSwiftUICode = `import SwiftUI
-
-struct ContentView: View {
-    // 実際に変数の状態が保持・更新される
-    @State var count: Int = 0
-    @State var message: String = "Tap the button below"
-
-    var body: some View {
-        VStack(spacing: 20) {
-            Text("SwiftUI Interactive")
-                .font(.title)
-                .foregroundColor(.blue)
-
-            Text("Count: \\(count)")
-                .font(.headline)
-                .foregroundColor(.gray)
-
-            Text(message)
-                .font(.subheadline)
-                .foregroundColor(.purple)
-
-            Button("Count Up") {
-                count += 1
-                message = "Button was Clicked!"
-            }
-            .padding()
-            .background(Color.blue)
-            .foregroundColor(.white)
-            .cornerRadius(12)
-
-            Button("Reset") {
-                count = 0
-                message = "Reset completed"
-            }
-            .padding()
-            .background(Color.red)
-            .foregroundColor(.white)
-            .cornerRadius(8)
-        }
-        .padding()
-    }
-}`;
 
         require.config({ paths: { vs: 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs' } });
         require(['vs/editor/editor.main'], function () {
@@ -193,7 +149,7 @@ struct ContentView: View {
                 clearTimeout(timer);
                 timer = setTimeout(() => {
                     saveFile();
-                    if (activePath.endsWith('.swift') || activePath.endsWith('.html')) {
+                    if (activePath.endsWith('.swift') || activePath.endsWith('.qml') || activePath.endsWith('.html')) {
                         executeUIRuntime();
                     }
                 }, 600);
@@ -218,22 +174,6 @@ struct ContentView: View {
             tree.innerHTML = "";
             if (!files) return;
 
-            // 初期SwiftUIファイルがなければ作る
-            if (!files.some(f => f.name === 'ContentView.swift')) {
-                await fetch('/api/create', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ path: 'ContentView.swift', isDir: false })
-                });
-                await fetch('/api/save', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ path: 'ContentView.swift', content: defaultSwiftUICode })
-                });
-                loadTree();
-                return;
-            }
-
             files.forEach(f => {
                 const li = document.createElement('li');
                 li.className = 'tree-item' + (f.path === activePath ? ' active' : '');
@@ -242,8 +182,9 @@ struct ContentView: View {
                 tree.appendChild(li);
             });
 
-            if (!activePath && files.some(f => f.name === 'ContentView.swift')) {
-                openFile('ContentView.swift');
+            if (!activePath && files.length > 0) {
+                const first = files.find(f => !f.isDir);
+                if (first) openFile(first.path);
             }
         }
 
@@ -264,123 +205,148 @@ struct ContentView: View {
             executeUIRuntime();
         }
 
-        // ★ 本物のインタラクティブSwiftUI実行エンジン (Wasm/AST Runtime)
+        // ★ SwiftUI & Qt QML の完全インタラクティブ実行エンジン
         function executeUIRuntime() {
             const code = editor.getValue();
             const ext = activePath.split('.').pop().toLowerCase();
 
             if (ext === 'html') {
+                previewTitle.innerHTML = '<i class="fa-brands fa-html5"></i> Web Preview';
                 previewFrame.srcdoc = code;
                 return;
             }
 
-            if (ext !== 'swift') return;
+            // --- 1. Qt Quick / QML 実行ランタイム ---
+            if (ext === 'qml') {
+                previewTitle.innerHTML = '<i class="fa-solid fa-cubes"></i> Qt Quick Window (Interactive)';
+                
+                previewFrame.srcdoc = `
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <meta charset="UTF-8">
+                    <style>
+                        body { margin:0; padding:20px; background:#2b2b2b; color:#ffffff; font-family:"Segoe UI", sans-serif; display:flex; flex-direction:column; align-items:center; justify-content:center; height:100vh; box-sizing:border-box; user-select:none; }
+                        .qt-window { background:#3c3f41; border:1px solid #555; border-radius:6px; box-shadow:0 4px 15px rgba(0,0,0,0.5); width:100%; height:100%; display:flex; flex-direction:column; overflow:hidden; }
+                        .qt-titlebar { background:#282b2c; padding:6px 12px; font-size:12px; font-weight:bold; border-bottom:1px solid #444; display:flex; justify-content:space-between; align-items:center; }
+                        .qt-content { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:16px; padding:20px; }
+                        .qt-btn { background:#4a4e52; color:#fff; border:1px solid #5a5e62; border-radius:4px; padding:8px 18px; font-size:13px; cursor:pointer; font-weight:500; transition:0.1s; }
+                        .qt-btn:hover { background:#5a5e62; }
+                        .qt-btn:active { background:#3a3e42; transform:scale(0.98); }
+                    </style>
+                </head>
+                <body>
+                    <div class="qt-window">
+                        <div class="qt-titlebar"><span>Qt Quick ApplicationWindow</span><span style="color:#888;">✕</span></div>
+                        <div class="qt-content" id="qt-root"></div>
+                    </div>
+                    <script>
+                        const qml = ${JSON.stringify(code)};
+                        const state = {};
 
-            // SwiftUI コードから状態変数(@State)とUIツリーを動的に解析・コンパイルするランタイムHTML
-            const runnerHTML = `
-            <!DOCTYPE html>
-            <html>
-            <head>
-                <meta charset="UTF-8">
-                <script src="https://cdn.tailwindcss.com"></` + `script>
-                <style>
-                    body { margin:0; padding:40px 16px 20px; font-family:-apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif; height:100vh; display:flex; flex-direction:column; justify-content:center; align-items:center; background:#f2f2f7; user-select:none; }
-                    .swift-btn { transition: transform 0.1s ease, opacity 0.1s; cursor: pointer; display:inline-block; font-weight:600; text-align:center; }
-                    .swift-btn:active { transform: scale(0.96); opacity: 0.8; }
-                </style>
-            </head>
-            <body>
-                <div id="root" class="w-full flex flex-col items-center justify-center"></div>
-
-                <script>
-                    // 1. SwiftUIのコードから @State 変数を抽出してリアクティブな状態ストアを作成
-                    const rawCode = ${JSON.stringify(code)};
-                    const state = {};
-
-                    // @State var 変数名: 型 = 初期値 を正規表現で抽出
-                    const stateRegex = /@State\\s+var\\s+([a-zA-Z0-9_]+)\\s*(?::\\s*[a-zA-Z0-9_]+)?\\s*=\\s*(.+)/g;
-                    let match;
-                    while ((match = stateRegex.exec(rawCode)) !== null) {
-                        const varName = match[1];
-                        let initVal = match[2].trim();
-                        try {
-                            state[varName] = eval(initVal);
-                        } catch(e) {
-                            state[varName] = initVal.replace(/"/g, '');
-                        }
-                    }
-
-                    // 2. ボタンアクションの実行関数
-                    window.handleAction = function(actionCode) {
-                        try {
-                            // Swiftの代入文 (例: count += 1, message = "...") をJS文脈で実行
-                            with (state) {
-                                eval(actionCode);
-                            }
-                            render(); // 状態が変わったらXcodeと同じく即時再描画
-                        } catch(err) {
-                            console.error("Action execution error:", err);
-                        }
-                    };
-
-                    // 3. レンダリング関数 (SwiftUI DSL ➜ DOMへの変換)
-                    function render() {
-                        const root = document.getElementById('root');
-                        let html = '<div class="flex flex-col items-center justify-center gap-4 w-full">';
-
-                        // Text("...") のパース & 変数埋め込み (\\(varName)) の解決
-                        const textRegex = /Text\\("([^"]+)"\\)((?:\\.[a-zA-Z0-9_]+\\([^)]*\\))*)/g;
-                        while ((match = textRegex.exec(rawCode)) !== null) {
-                            let textContent = match[1];
-                            const modifiers = match[2];
-
-                            // \\(val) を state の値で置換
-                            textContent = textContent.replace(/\\\\\\(([a-zA-Z0-9_]+)\\)/g, (_, v) => state[v] !== undefined ? state[v] : '');
-
-                            let styleClass = "text-base text-gray-900";
-                            if (modifiers.includes(".font(.title)")) styleClass = "text-2xl font-bold";
-                            if (modifiers.includes(".font(.headline)")) styleClass = "text-lg font-semibold";
-                            if (modifiers.includes(".font(.subheadline)")) styleClass = "text-sm text-gray-500";
-                            if (modifiers.includes(".foregroundColor(.blue)")) styleClass += " text-blue-600";
-                            if (modifiers.includes(".foregroundColor(.gray)")) styleClass += " text-gray-500";
-                            if (modifiers.includes(".foregroundColor(.purple)")) styleClass += " text-purple-600";
-
-                            html += '<div class="' + styleClass + '">' + textContent + '</div>';
+                        // property <type> <name>: <value> の抽出
+                        const propRegex = /property\\s+[a-zA-Z0-9_]+\\s+([a-zA-Z0-9_]+)\\s*:\\s*(.+)/g;
+                        let m;
+                        while ((m = propRegex.exec(qml)) !== null) {
+                            try { state[m[1]] = eval(m[2]); } catch(e) { state[m[1]] = m[2]; }
                         }
 
-                        // Button("タイトル") { アクション } のパース
-                        const btnRegex = /Button\\("([^"]+)"\\)\\s*\\{([\\s\\S]*?)\\}((?:\\.[a-zA-Z0-9_]+\\([^)]*\\))*)/g;
-                        while ((match = btnRegex.exec(rawCode)) !== null) {
-                            const btnTitle = match[1];
-                            let btnAction = match[2].trim();
-                            const modifiers = match[3];
+                        window.runQtAction = function(action) {
+                            with(state) { eval(action); }
+                            renderQt();
+                        };
 
-                            // Swift文法のアクションをJS実行可能な形式に正規化
-                            btnAction = btnAction.replace(/\\n/g, ';');
+                        function renderQt() {
+                            const root = document.getElementById('qt-root');
+                            let html = '';
 
-                            let btnClass = "swift-btn px-6 py-3 rounded-xl shadow-sm ";
-                            if (modifiers.includes(".background(Color.blue)")) btnClass += "bg-blue-600 text-white ";
-                            else if (modifiers.includes(".background(Color.red)")) btnClass += "bg-red-500 text-white ";
-                            else btnClass += "bg-gray-200 text-gray-800 ";
-
-                            if (modifiers.includes(".cornerRadius(")) {
-                                const r = modifiers.match(/\\.cornerRadius\\(([0-9]+)\\)/);
-                                if (r) btnClass += "style='border-radius:" + r[1] + "px;' ";
+                            // Text { text: ... } の抽出
+                            const textRegex = /Text\\s*\\{[\\s\\S]*?text:\\s*([^\\n\\}]+)/g;
+                            while ((m = textRegex.exec(qml)) !== null) {
+                                let expr = m[1].trim();
+                                let val = expr;
+                                try {
+                                    with(state) { val = eval(expr); }
+                                } catch(e) {}
+                                html += '<div style="font-size:16px; font-weight:600;">' + val + '</div>';
                             }
 
-                            html += '<button onclick="handleAction(\\\`' + btnAction.replace(/"/g, '&quot;') + '\\\`)" class="' + btnClass + '">' + btnTitle + '</button>';
+                            // Button { text: ..., onClicked: { ... } } の抽出
+                            const btnRegex = /Button\\s*\\{[\\s\\S]*?text:\\s*["']([^"']+)["'][\\s\\S]*?onClicked:\\s*\\{([\\s\\S]*?)\\}/g;
+                            while ((m = btnRegex.exec(qml)) !== null) {
+                                const title = m[1];
+                                const action = m[2].trim().replace(/\\n/g, ';');
+                                html += '<button class="qt-btn" onclick="runQtAction(\\\`' + action + '\\\`)">' + title + '</button>';
+                            }
+
+                            root.innerHTML = html;
+                        }
+                        renderQt();
+                    </` + `script>
+                </body>
+                </html>`;
+                return;
+            }
+
+            // --- 2. SwiftUI インタラクティブ実行ランタイム ---
+            if (ext === 'swift') {
+                previewTitle.innerHTML = '<i class="fa-brands fa-apple"></i> SwiftUI Simulator';
+                previewFrame.srcdoc = `
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <meta charset="UTF-8">
+                    <script src="https://cdn.tailwindcss.com"></` + `script>
+                    <style>
+                        body { margin:0; padding:20px; font-family:-apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif; height:100vh; display:flex; flex-direction:column; justify-content:center; align-items:center; background:#f2f2f7; user-select:none; }
+                        .swift-btn { transition: transform 0.1s ease, opacity 0.1s; cursor: pointer; font-weight:600; text-align:center; }
+                        .swift-btn:active { transform: scale(0.96); opacity: 0.8; }
+                    </style>
+                </head>
+                <body>
+                    <div id="root" class="w-full flex flex-col items-center justify-center"></div>
+                    <script>
+                        const rawCode = ${JSON.stringify(code)};
+                        const state = {};
+
+                        const stateRegex = /@State\\s+var\\s+([a-zA-Z0-9_]+)\\s*(?::\\s*[a-zA-Z0-9_]+)?\\s*=\\s*(.+)/g;
+                        let match;
+                        while ((match = stateRegex.exec(rawCode)) !== null) {
+                            try { state[match[1]] = eval(match[2].trim()); } catch(e) { state[match[1]] = match[2].trim().replace(/"/g, ''); }
                         }
 
-                        html += '</div>';
-                        root.innerHTML = html;
-                    }
+                        window.handleAction = function(actionCode) {
+                            try {
+                                with (state) { eval(actionCode); }
+                                render();
+                            } catch(err) { console.error(err); }
+                        };
 
-                    render();
-                </` + `script>
-            </body>
-            </html>`;
+                        function render() {
+                            const root = document.getElementById('root');
+                            let html = '<div class="flex flex-col items-center justify-center gap-4 w-full">';
 
-            previewFrame.srcdoc = runnerHTML;
+                            const textRegex = /Text\\("([^"]+)"\\)((?:\\.[a-zA-Z0-9_]+\\([^)]*\\))*)/g;
+                            while ((match = textRegex.exec(rawCode)) !== null) {
+                                let textContent = match[1].replace(/\\\\\\(([a-zA-Z0-9_]+)\\)/g, (_, v) => state[v] !== undefined ? state[v] : '');
+                                html += '<div class="text-base text-gray-900 font-medium">' + textContent + '</div>';
+                            }
+
+                            const btnRegex = /Button\\("([^"]+)"\\)\\s*\\{([\\s\\S]*?)\\}/g;
+                            while ((match = btnRegex.exec(rawCode)) !== null) {
+                                const btnTitle = match[1];
+                                const btnAction = match[2].trim().replace(/\\n/g, ';');
+                                html += '<button onclick="handleAction(\\\`' + btnAction + '\\\`)" class="swift-btn px-6 py-2.5 bg-blue-600 text-white rounded-xl shadow">' + btnTitle + '</button>';
+                            }
+
+                            html += '</div>';
+                            root.innerHTML = html;
+                        }
+                        render();
+                    </` + `script>
+                </body>
+                </html>`;
+            }
         }
 
         document.getElementById('render-ui-btn').onclick = executeUIRuntime;
@@ -414,7 +380,7 @@ struct ContentView: View {
         };
 
         document.getElementById('new-file-btn').onclick = () => {
-            showPrompt("新規ファイル名 (例: Main.swift, app.py, test.cs)", async (name) => {
+            showPrompt("新規ファイル名 (例: main.go, app.rs, ui.qml, View.swift)", async (name) => {
                 await fetch('/api/create', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -439,10 +405,10 @@ struct ContentView: View {
         document.getElementById('refresh-tree-btn').onclick = loadTree;
         document.getElementById('clear-term').onclick = () => output.innerText = "";
 
-        // Alpineネイティブ実行 (C#, Go, Rust, Python, etc.)
+        // ★ プロジェクト単位の一括ビルド＆実行
         document.getElementById('sidebar-run-btn').onclick = async () => {
             if (!activePath) return;
-            output.innerText = `[Running on Alpine Linux] ${activePath} ...\n-----------------------------------`;
+            output.innerText = `[Building Project] ${activePath} ...\n-----------------------------------`;
             await saveFile();
 
             const startTime = performance.now();
@@ -454,7 +420,7 @@ struct ContentView: View {
                 });
                 const result = await res.text();
                 const duration = ((performance.now() - startTime) / 1000).toFixed(2);
-                output.innerText = result + `\n\n-----------------------------------\n[Finished in ${duration}s]`;
+                output.innerText = result + `\n\n-----------------------------------\n[Project Build Finished in ${duration}s]`;
             } catch (err) {
                 output.innerText = `実行エラー: ${err}`;
             }
