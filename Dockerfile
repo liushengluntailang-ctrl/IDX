@@ -5,12 +5,14 @@ RUN apk update && apk add --no-cache go python3
 
 WORKDIR /app
 
-# C# の実行用プロジェクトを事前に作っておく（初回ビルド高速化）
+# C# の実行用プロジェクトを事前に作っておく（実行を爆速にするため）
 RUN mkdir -p /app/csharp && cd /app/csharp && dotnet new console
 
-# ソースコードをコピーしてGoサーバーをコンパイル
+# ソースコードとHTMLを直下からコピー
 COPY main.go .
-COPY public/ ./public/
+COPY index.html .
+
+# Goサーバーをビルド
 RUN go build -o server main.go
 
 EXPOSE 10000
