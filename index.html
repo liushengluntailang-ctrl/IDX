@@ -3,21 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <title>Alpine Custom IDX</title>
-    <!-- VS Codeと同じ Monaco Editor エンジン -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs/editor/editor.main.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { display: flex; height: 100vh; background: #1e1e1e; color: #cccccc; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace; overflow: hidden; }
         
-        /* 1. 左端のアクティビティバー (VS Code再現) */
+        /* 1. アクティビティバー */
         #activity-bar { width: 48px; background: #333333; display: flex; flex-direction: column; align-items: center; padding-top: 10px; border-right: 1px solid #252525; }
         .act-btn { width: 48px; height: 48px; display: flex; justify-content: center; align-items: center; color: #858585; cursor: pointer; font-size: 20px; transition: 0.2s; }
         .act-btn:hover, .act-btn.active { color: #ffffff; }
         .act-btn.run-btn { color: #4ec9b0; }
         .act-btn.run-btn:hover { color: #85e8d3; transform: scale(1.1); }
 
-        /* 2. サイドバー (ファイルツリー) */
+        /* 2. サイドバー */
         #sidebar { width: 240px; background: #252526; display: flex; flex-direction: column; border-right: 1px solid #191919; }
         #sidebar-header { padding: 10px 15px; font-size: 11px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.8px; color: #bbbbbb; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #2d2d2d; }
         .sidebar-actions i { margin-left: 10px; cursor: pointer; font-size: 13px; }
@@ -28,8 +27,8 @@
         .tree-item.active { background: #37373d; color: #fff; }
         .tree-item i { font-size: 12px; width: 14px; text-align: center; }
 
-        /* 3. メインエディタ領域 */
-        #main-area { flex: 1; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+        /* 3. メインエディタ */
+        #main-area { flex: 1; display: flex; flex-direction: column; height: 100vh; overflow: hidden; position: relative; }
         #tabs-bar { height: 35px; background: #252526; display: flex; align-items: center; overflow-x: auto; border-bottom: 1px solid #1e1e1e; }
         .tab { height: 100%; padding: 0 16px; background: #2d2d2d; color: #969696; display: flex; align-items: center; gap: 8px; font-size: 13px; border-right: 1px solid #252526; cursor: pointer; }
         .tab.active { background: #1e1e1e; color: #ffffff; border-top: 2px solid #007acc; }
@@ -37,16 +36,31 @@
         #editor-container { flex: 1; position: relative; }
         #monaco-editor { width: 100%; height: 100%; }
 
-        /* 4. 下部ターミナル */
+        /* 4. ターミナル */
         #terminal-panel { height: 220px; background: #181818; border-top: 1px solid #333; display: flex; flex-direction: column; }
         #terminal-header { height: 28px; background: #222222; display: flex; align-items: center; justify-content: space-between; padding: 0 12px; font-size: 11px; font-weight: bold; color: #aaa; border-bottom: 1px solid #2a2a2a; }
         #terminal-output { flex: 1; padding: 10px 15px; font-family: "Consolas", monospace; font-size: 13px; color: #d4d4d4; overflow-y: auto; white-space: pre-wrap; line-height: 1.4; }
 
-        /* 5. 最下部ステータスバー */
+        /* 5. ステータスバー */
         #status-bar { height: 22px; background: #007acc; color: white; display: flex; align-items: center; justify-content: space-between; padding: 0 10px; font-size: 12px; }
+
+        /* ★ VS Code本家完全再現：上部クイック入力バー */
+        #modal-overlay { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 9999; background: rgba(0,0,0,0.3); }
+        #quick-input-box { position: absolute; top: 20px; left: 50%; transform: translateX(-50%); width: 500px; background: #252526; border: 1px solid #007acc; box-shadow: 0 4px 10px rgba(0,0,0,0.5); padding: 8px; display: flex; flex-direction: column; gap: 6px; }
+        #quick-input-label { font-size: 11px; color: #858585; }
+        #quick-input { width: 100%; background: #3c3c3c; border: 1px solid #3c3c3c; color: #fff; font-size: 13px; padding: 6px 10px; outline: none; font-family: inherit; }
+        #quick-input:focus { border-color: #007acc; }
     </style>
 </head>
 <body>
+
+    <!-- VS Code風 クイック入力パレット（ダサいpromptの完全代替） -->
+    <div id="modal-overlay">
+        <div id="quick-input-box">
+            <span id="quick-input-label">ファイル名を入力 (Enterで確定, Escでキャンセル)</span>
+            <input type="text" id="quick-input" placeholder="例: main.py, test.rs, app.go" autocomplete="off" />
+        </div>
+    </div>
 
     <!-- 1. Activity Bar -->
     <div id="activity-bar">
@@ -102,7 +116,6 @@
         let activePath = "";
         const output = document.getElementById("terminal-output");
 
-        // 言語判定マップ
         const langMap = {
             'cs': 'csharp', 'py': 'python', 'go': 'go', 'rs': 'rust',
             'cpp': 'cpp', 'cc': 'cpp', 'c': 'c', 'js': 'javascript',
@@ -121,7 +134,6 @@
                 fontFamily: 'Consolas, "Fira Code", monospace'
             });
 
-            // 自動保存 (入力から500ms後にAlpine側へ送信)
             let saveTimer;
             editor.onDidChangeModelContent(() => {
                 if (!activePath) return;
@@ -151,13 +163,13 @@
                 const li = document.createElement('li');
                 li.className = 'tree-item' + (f.path === activePath ? ' active' : '');
                 
-                // アイコン選定
                 let icon = f.isDir ? 'fa-regular fa-folder' : 'fa-regular fa-file-code';
                 if (!f.isDir) {
                     const ext = f.name.split('.').pop();
                     if (ext === 'cs') icon = 'fa-solid fa-hashtag';
                     else if (ext === 'py') icon = 'fa-brands fa-python';
                     else if (ext === 'rs') icon = 'fa-solid fa-gear';
+                    else if (ext === 'go') icon = 'fa-brands fa-golang';
                 }
 
                 li.innerHTML = `<i class="${icon}"></i> <span>${f.path}</span>`;
@@ -167,21 +179,19 @@
                 tree.appendChild(li);
             });
 
-            // 初期ファイルオープン
             if (!activePath && files.some(f => !f.isDir)) {
                 const first = files.find(f => !f.isDir);
                 openFile(first.path);
             }
         }
 
-        // ファイルを開く & 言語自動適用
+        // ファイルを開く
         async function openFile(path) {
             activePath = path;
             document.getElementById('tab-filename').innerText = path;
             const res = await fetch(`/api/load?path=${encodeURIComponent(path)}`);
             const content = await res.text();
             
-            // 拡張子から言語を決定
             const ext = path.split('.').pop().toLowerCase();
             const lang = langMap[ext] || 'plaintext';
 
@@ -189,16 +199,43 @@
             monaco.editor.setModelLanguage(editor.getModel(), lang);
             document.getElementById('status-lang').innerText = `Language: ${lang.toUpperCase()}`;
 
-            // アクティブハイライト更新
             document.querySelectorAll('.tree-item').forEach(el => {
                 el.classList.toggle('active', el.querySelector('span').innerText === path);
             });
         }
 
+        // ★ VS Code風入力パレットの制御（prompt完全撤廃）
+        const overlay = document.getElementById('modal-overlay');
+        const input = document.getElementById('quick-input');
+        const label = document.getElementById('quick-input-label');
+        let currentAction = null;
+
+        function showPrompt(title, placeholder, onConfirm) {
+            label.innerText = title;
+            input.placeholder = placeholder;
+            input.value = "";
+            overlay.style.display = 'block';
+            input.focus();
+            currentAction = onConfirm;
+        }
+
+        input.onkeydown = (e) => {
+            if (e.key === 'Enter') {
+                const val = input.value.trim();
+                overlay.style.display = 'none';
+                if (val && currentAction) currentAction(val);
+            } else if (e.key === 'Escape') {
+                overlay.style.display = 'none';
+            }
+        };
+
+        overlay.onclick = (e) => {
+            if (e.target === overlay) overlay.style.display = 'none';
+        };
+
         // 新規ファイル作成
-        document.getElementById('new-file-btn').onclick = async () => {
-            const name = prompt("作成するファイル名 (例: main.py, app.go, test.rs):");
-            if (name) {
+        document.getElementById('new-file-btn').onclick = () => {
+            showPrompt("新規ファイル名を入力 (Enterで作成, Escで取消)", "例: main.py, app.go, test.rs", async (name) => {
                 await fetch('/api/create', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -206,26 +243,25 @@
                 });
                 await loadTree();
                 openFile(name);
-            }
+            });
         };
 
         // 新規フォルダ作成
-        document.getElementById('new-folder-btn').onclick = async () => {
-            const name = prompt("作成するフォルダー名 (例: src, utils):");
-            if (name) {
+        document.getElementById('new-folder-btn').onclick = () => {
+            showPrompt("新規フォルダー名を入力 (Enterで作成, Escで取消)", "例: src, components", async (name) => {
                 await fetch('/api/create', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ path: name, isDir: true })
                 });
                 await loadTree();
-            }
+            });
         };
 
         document.getElementById('refresh-tree-btn').onclick = loadTree;
         document.getElementById('clear-term').onclick = () => output.innerText = "";
 
-        // ★ 左メニューの「▶」実行ボタン
+        // 左メニューの [▶] 実行ボタン
         document.getElementById('sidebar-run-btn').onclick = async () => {
             if (!activePath) {
                 alert("実行するファイルを開いてください");
@@ -234,7 +270,6 @@
 
             output.innerText = `[Running] ${activePath} ...\n-----------------------------------`;
 
-            // 保存を即時反映させてから実行
             await fetch('/api/save', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
