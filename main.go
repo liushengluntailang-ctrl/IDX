@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"os/exec"
@@ -30,50 +31,30 @@ type ExecRequest struct {
 	Path string `json:"path"`
 }
 
+type CmdRequest struct {
+	Cmd string `json:"cmd"`
+}
+
+type DeleteRequest struct {
+	Path string `json:"path"`
+}
+
 func main() {
 	workspaceRoot := "/app/workspace"
 
-	// 初期Qt QMLファイル
-	qmlSample := filepath.Join(workspaceRoot, "main.qml")
-	if _, err := os.Stat(qmlSample); os.IsNotExist(err) {
-		os.WriteFile(qmlSample, []byte(`import QtQuick 2.15
-import QtQuick.Controls 2.15
-
-ApplicationWindow {
-    visible: true
-    width: 320
-    height: 480
-    title: "Qt Quick Window"
-
-    property int count: 0
-
-    Column {
-        anchors.centerIn: parent
-        spacing: 16
-
-        Text {
-            text: "Qt QML Interactive"
-            font.pixelSize: 20
-            color: "#00b4d8"
-            anchors.horizontalCenter: parent.horizontalCenter
-        }
-
-        Text {
-            text: "Count: " + count
-            font.pixelSize: 18
-            color: "#ffffff"
-            anchors.horizontalCenter: parent.horizontalCenter
-        }
-
-        Button {
-            text: "Qt Button (Click Me)"
-            anchors.horizontalCenter: parent.horizontalCenter
-            onClicked: {
-                count += 1
-            }
-        }
-    }
-}`), 0644)
+	// 初期サンプルSVGファイルを作成
+	svgSample := filepath.Join(workspaceRoot, "logo.svg")
+	if _, err := os.Stat(svgSample); os.IsNotExist(err) {
+		os.WriteFile(svgSample, []byte(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+  <defs>
+    <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#007acc;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#4ec9b0;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  <circle cx="100" cy="100" r="80" fill="url(#grad)" />
+  <path d="M70 60 L140 100 L70 140 Z" fill="#ffffff" />
+</svg>`), 0644)
 	}
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
@@ -99,7 +80,7 @@ ApplicationWindow {
 		json.NewEncoder(w).Encode(list)
 	})
 
-	// 読み込み
+	// テキスト読み込み
 	http.HandleFunc("/api/load", func(w http.ResponseWriter, r *http.Request) {
 		path := filepath.Join(workspaceRoot, r.URL.Query().Get("path"))
 		data, err := os.ReadFile(path)
@@ -108,6 +89,12 @@ ApplicationWindow {
 			return
 		}
 		w.Write(data)
+	})
+
+	// バイナリ配信 (MP3, MP4, 画像などの直接ストリーミング)
+	http.HandleFunc("/api/raw", func(w http.ResponseWriter, r *http.Request) {
+		fullPath := filepath.Join(workspaceRoot, r.URL.Query().Get("path"))
+		http.ServeFile(w, r, fullPath)
 	})
 
 	// 保存
@@ -133,7 +120,33 @@ ApplicationWindow {
 		w.Write([]byte("OK"))
 	})
 
-	// ★ 単一ファイルではなく「プロジェクト単位」で爆速実行するエンジン
+	// ★ 1. ファイル / フォルダ削除 API
+	http.HandleFunc("/api/delete", func(w http.ResponseWriter, r *http.Request) {
+		var req DeleteRequest
+		json.NewDecoder(r.Body).Decode(&req)
+		fullPath := filepath.Join(workspaceRoot, req.Path)
+		err := os.RemoveAll(fullPath)
+		if err != nil {
+			http.Error(w, err.Error(), 500)
+			return
+		}
+		w.Write([]byte("OK"))
+	})
+
+	// ★ 2. 対話型ターミナル実行 API (任意のLinuxコマンド)
+	http.HandleFunc("/api/cmd", func(w http.ResponseWriter, r *http.Request) {
+		var req CmdRequest
+		json.NewDecoder(r.Body).Decode(&req)
+		cmd := exec.Command("sh", "-c", fmt.Sprintf("cd %s && %s", workspaceRoot, req.Cmd))
+		out, err := cmd.CombinedOutput()
+		if err != nil && len(out) == 0 {
+			fmt.Fprintf(w, "Command error: %v", err)
+			return
+		}
+		w.Write(out)
+	})
+
+	// プロジェクトビルド & 実行 API
 	http.HandleFunc("/api/run", func(w http.ResponseWriter, r *http.Request) {
 		var req ExecRequest
 		json.NewDecoder(r.Body).Decode(&req)
@@ -145,7 +158,6 @@ ApplicationWindow {
 
 		switch ext {
 		case ".cs":
-			// プロジェクトルートを探して dotnet run、なければディレクトリ内の全 .cs をプロジェクト化して実行
 			cmd = exec.Command("sh", "-c", fmt.Sprintf(`
 				cd '%s'
 				if [ -f *.csproj ]; then
@@ -155,9 +167,7 @@ ApplicationWindow {
 					cd /app/csharp_env && dotnet run
 				fi
 			`, dir))
-
 		case ".rs":
-			// Cargo.toml があれば cargo run、なければディレクトリ内の全 .rs を結合コンパイル
 			cmd = exec.Command("sh", "-c", fmt.Sprintf(`
 				cd '%s'
 				if [ -f Cargo.toml ]; then
@@ -166,22 +176,16 @@ ApplicationWindow {
 					rustc *.rs -o /tmp/rust_app && /tmp/rust_app
 				fi
 			`, dir))
-
 		case ".go":
-			// ディレクトリ内の全 Go ファイル（パッケージ全体）をリンクして実行
 			cmd = exec.Command("sh", "-c", fmt.Sprintf("cd '%s' && go run .", dir))
-
 		case ".cpp", ".c":
-			// ディレクトリ内の全 C/C++ ファイルをリンクビルド
 			cmd = exec.Command("sh", "-c", fmt.Sprintf("cd '%s' && g++ *.cpp *.c -o /tmp/native_app 2>/dev/null || g++ '%s' -o /tmp/native_app && /tmp/native_app", dir, fullPath))
-
 		case ".py":
-			// ディレクトリ全体を import できるようにカレントディレクトリから実行
 			cmd = exec.Command("sh", "-c", fmt.Sprintf("cd '%s' && python3 '%s'", dir, fullPath))
-
 		case ".js", ".ts":
 			cmd = exec.Command("sh", "-c", fmt.Sprintf("cd '%s' && node '%s'", dir, fullPath))
-
+		case ".sh":
+			cmd = exec.Command("sh", "-c", fmt.Sprintf("cd '%s' && sh '%s'", dir, fullPath))
 		default:
 			fmt.Fprintf(w, "実行対象外のファイルです: %s", ext)
 			return
@@ -189,7 +193,7 @@ ApplicationWindow {
 
 		out, err := cmd.CombinedOutput()
 		if err != nil {
-			fmt.Fprintf(w, "%s\n[ビルド/実行エラー: exit status]", string(out))
+			fmt.Fprintf(w, "%s\n[ビルド/実行エラー]", string(out))
 			return
 		}
 		w.Write(out)
