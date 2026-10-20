@@ -2,55 +2,257 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>My Pure Custom IDX</title>
+    <title>Alpine Custom IDX</title>
+    <!-- VS Codeと同じ Monaco Editor エンジン -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs/editor/editor.main.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        body { margin: 0; display: flex; flex-direction: column; height: 100vh; background: #121212; color: #fff; font-family: monospace; }
-        header { background: #1e1e1e; padding: 10px; display: flex; gap: 10px; border-bottom: 1px solid #333; }
-        select, button { background: #333; color: #fff; border: 1px solid #555; padding: 5px 10px; cursor: pointer; }
-        #run-btn { background: #238636; border: none; font-weight: bold; }
-        #container { display: flex; flex: 1; }
-        #editor { flex: 1; width: 50%; background: #181818; color: #00ff66; padding: 15px; font-size: 14px; border: none; outline: none; resize: none; }
-        #output { flex: 1; width: 50%; background: #000; color: #ccc; padding: 15px; border-left: 1px solid #333; overflow-y: auto; white-space: pre-wrap; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { display: flex; height: 100vh; background: #1e1e1e; color: #cccccc; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace; overflow: hidden; }
+        
+        /* 1. 左端のアクティビティバー (VS Code再現) */
+        #activity-bar { width: 48px; background: #333333; display: flex; flex-direction: column; align-items: center; padding-top: 10px; border-right: 1px solid #252525; }
+        .act-btn { width: 48px; height: 48px; display: flex; justify-content: center; align-items: center; color: #858585; cursor: pointer; font-size: 20px; transition: 0.2s; }
+        .act-btn:hover, .act-btn.active { color: #ffffff; }
+        .act-btn.run-btn { color: #4ec9b0; }
+        .act-btn.run-btn:hover { color: #85e8d3; transform: scale(1.1); }
+
+        /* 2. サイドバー (ファイルツリー) */
+        #sidebar { width: 240px; background: #252526; display: flex; flex-direction: column; border-right: 1px solid #191919; }
+        #sidebar-header { padding: 10px 15px; font-size: 11px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.8px; color: #bbbbbb; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #2d2d2d; }
+        .sidebar-actions i { margin-left: 10px; cursor: pointer; font-size: 13px; }
+        .sidebar-actions i:hover { color: #fff; }
+        #file-tree { flex: 1; overflow-y: auto; padding-top: 5px; list-style: none; }
+        .tree-item { padding: 4px 15px; cursor: pointer; display: flex; align-items: center; gap: 8px; font-size: 13px; user-select: none; }
+        .tree-item:hover { background: #2a2d2e; }
+        .tree-item.active { background: #37373d; color: #fff; }
+        .tree-item i { font-size: 12px; width: 14px; text-align: center; }
+
+        /* 3. メインエディタ領域 */
+        #main-area { flex: 1; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+        #tabs-bar { height: 35px; background: #252526; display: flex; align-items: center; overflow-x: auto; border-bottom: 1px solid #1e1e1e; }
+        .tab { height: 100%; padding: 0 16px; background: #2d2d2d; color: #969696; display: flex; align-items: center; gap: 8px; font-size: 13px; border-right: 1px solid #252526; cursor: pointer; }
+        .tab.active { background: #1e1e1e; color: #ffffff; border-top: 2px solid #007acc; }
+
+        #editor-container { flex: 1; position: relative; }
+        #monaco-editor { width: 100%; height: 100%; }
+
+        /* 4. 下部ターミナル */
+        #terminal-panel { height: 220px; background: #181818; border-top: 1px solid #333; display: flex; flex-direction: column; }
+        #terminal-header { height: 28px; background: #222222; display: flex; align-items: center; justify-content: space-between; padding: 0 12px; font-size: 11px; font-weight: bold; color: #aaa; border-bottom: 1px solid #2a2a2a; }
+        #terminal-output { flex: 1; padding: 10px 15px; font-family: "Consolas", monospace; font-size: 13px; color: #d4d4d4; overflow-y: auto; white-space: pre-wrap; line-height: 1.4; }
+
+        /* 5. 最下部ステータスバー */
+        #status-bar { height: 22px; background: #007acc; color: white; display: flex; align-items: center; justify-content: space-between; padding: 0 10px; font-size: 12px; }
     </style>
 </head>
 <body>
-    <header>
-        <strong>Custom IDX</strong>
-        <select id="lang">
-            <option value="csharp">C# (.NET 8)</option>
-            <option value="python">Python 3</option>
-        </select>
-        <button id="run-btn">▶ 実行 (Run)</button>
-    </header>
-    <div id="container">
-        <textarea id="editor" spellcheck="false"></textarea>
-        <div id="output">// 実行結果がここに出力されます</div>
+
+    <!-- 1. Activity Bar -->
+    <div id="activity-bar">
+        <div class="act-btn active" title="Explorer"><i class="fa-regular fa-copy"></i></div>
+        <div class="act-btn run-btn" id="sidebar-run-btn" title="実行 (Run)"><i class="fa-solid fa-play"></i></div>
     </div>
 
-    <script>
-        const editor = document.getElementById('editor');
-        const output = document.getElementById('output');
-        const lang = document.getElementById('lang');
+    <!-- 2. Sidebar -->
+    <div id="sidebar">
+        <div id="sidebar-header">
+            <span>EXPLORER : WORKSPACE</span>
+            <div class="sidebar-actions">
+                <i class="fa-solid fa-file-circle-plus" id="new-file-btn" title="新規ファイル作成"></i>
+                <i class="fa-solid fa-folder-plus" id="new-folder-btn" title="新規フォルダ作成"></i>
+                <i class="fa-solid fa-rotate" id="refresh-tree-btn" title="再読み込み"></i>
+            </div>
+        </div>
+        <ul id="file-tree"></ul>
+    </div>
 
-        const templates = {
-            csharp: 'using System;\n\nclass Program {\n    static void Main() {\n        Console.WriteLine("Hello from 100% 自作 IDX!");\n    }\n}',
-            python: 'print("Hello from 100% 自作 IDX (Python)!")'
+    <!-- 3. Main Editor Area -->
+    <div id="main-area">
+        <div id="tabs-bar">
+            <div class="tab active" id="current-tab">
+                <i class="fa-solid fa-code"></i>
+                <span id="tab-filename">ファイルを選択</span>
+            </div>
+        </div>
+
+        <div id="editor-container">
+            <div id="monaco-editor"></div>
+        </div>
+
+        <!-- 4. Terminal / Console -->
+        <div id="terminal-panel">
+            <div id="terminal-header">
+                <span>OUTPUT / TERMINAL</span>
+                <span id="clear-term" style="cursor:pointer;" title="クリア"><i class="fa-solid fa-ban"></i></span>
+            </div>
+            <div id="terminal-output">// 左メニューの [▶] ボタンで現在開いているファイルを実行します...</div>
+        </div>
+
+        <!-- 5. Status Bar -->
+        <div id="status-bar">
+            <div><i class="fa-solid fa-circle-check"></i> Alpine Ready</div>
+            <div id="status-lang">Language: None</div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs/loader.min.js"></script>
+    <script>
+        let editor;
+        let activePath = "";
+        const output = document.getElementById("terminal-output");
+
+        // 言語判定マップ
+        const langMap = {
+            'cs': 'csharp', 'py': 'python', 'go': 'go', 'rs': 'rust',
+            'cpp': 'cpp', 'cc': 'cpp', 'c': 'c', 'js': 'javascript',
+            'ts': 'typescript', 'sh': 'shell', 'json': 'json', 'html': 'html'
         };
 
-        editor.value = templates.csharp;
-        lang.onchange = () => editor.value = templates[lang.value];
+        // Monaco Editor 初期化
+        require.config({ paths: { vs: 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs' } });
+        require(['vs/editor/editor.main'], function () {
+            editor = monaco.editor.create(document.getElementById('monaco-editor'), {
+                value: '// ファイルを選択してください',
+                language: 'plaintext',
+                theme: 'vs-dark',
+                automaticLayout: true,
+                fontSize: 14,
+                fontFamily: 'Consolas, "Fira Code", monospace'
+            });
 
-        document.getElementById('run-btn').onclick = async () => {
-            output.innerText = "コンパイル & 実行中...";
+            // 自動保存 (入力から500ms後にAlpine側へ送信)
+            let saveTimer;
+            editor.onDidChangeModelContent(() => {
+                if (!activePath) return;
+                clearTimeout(saveTimer);
+                saveTimer = setTimeout(async () => {
+                    await fetch('/api/save', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ path: activePath, content: editor.getValue() })
+                    });
+                }, 500);
+            });
+
+            loadTree();
+        });
+
+        // ファイルツリーの取得
+        async function loadTree() {
+            const res = await fetch('/api/files');
+            const files = await res.json();
+            const tree = document.getElementById('file-tree');
+            tree.innerHTML = "";
+
+            if (!files || files.length === 0) return;
+
+            files.forEach(f => {
+                const li = document.createElement('li');
+                li.className = 'tree-item' + (f.path === activePath ? ' active' : '');
+                
+                // アイコン選定
+                let icon = f.isDir ? 'fa-regular fa-folder' : 'fa-regular fa-file-code';
+                if (!f.isDir) {
+                    const ext = f.name.split('.').pop();
+                    if (ext === 'cs') icon = 'fa-solid fa-hashtag';
+                    else if (ext === 'py') icon = 'fa-brands fa-python';
+                    else if (ext === 'rs') icon = 'fa-solid fa-gear';
+                }
+
+                li.innerHTML = `<i class="${icon}"></i> <span>${f.path}</span>`;
+                if (!f.isDir) {
+                    li.onclick = () => openFile(f.path);
+                }
+                tree.appendChild(li);
+            });
+
+            // 初期ファイルオープン
+            if (!activePath && files.some(f => !f.isDir)) {
+                const first = files.find(f => !f.isDir);
+                openFile(first.path);
+            }
+        }
+
+        // ファイルを開く & 言語自動適用
+        async function openFile(path) {
+            activePath = path;
+            document.getElementById('tab-filename').innerText = path;
+            const res = await fetch(`/api/load?path=${encodeURIComponent(path)}`);
+            const content = await res.text();
+            
+            // 拡張子から言語を決定
+            const ext = path.split('.').pop().toLowerCase();
+            const lang = langMap[ext] || 'plaintext';
+
+            editor.setValue(content);
+            monaco.editor.setModelLanguage(editor.getModel(), lang);
+            document.getElementById('status-lang').innerText = `Language: ${lang.toUpperCase()}`;
+
+            // アクティブハイライト更新
+            document.querySelectorAll('.tree-item').forEach(el => {
+                el.classList.toggle('active', el.querySelector('span').innerText === path);
+            });
+        }
+
+        // 新規ファイル作成
+        document.getElementById('new-file-btn').onclick = async () => {
+            const name = prompt("作成するファイル名 (例: main.py, app.go, test.rs):");
+            if (name) {
+                await fetch('/api/create', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ path: name, isDir: false })
+                });
+                await loadTree();
+                openFile(name);
+            }
+        };
+
+        // 新規フォルダ作成
+        document.getElementById('new-folder-btn').onclick = async () => {
+            const name = prompt("作成するフォルダー名 (例: src, utils):");
+            if (name) {
+                await fetch('/api/create', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ path: name, isDir: true })
+                });
+                await loadTree();
+            }
+        };
+
+        document.getElementById('refresh-tree-btn').onclick = loadTree;
+        document.getElementById('clear-term').onclick = () => output.innerText = "";
+
+        // ★ 左メニューの「▶」実行ボタン
+        document.getElementById('sidebar-run-btn').onclick = async () => {
+            if (!activePath) {
+                alert("実行するファイルを開いてください");
+                return;
+            }
+
+            output.innerText = `[Running] ${activePath} ...\n-----------------------------------`;
+
+            // 保存を即時反映させてから実行
+            await fetch('/api/save', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ path: activePath, content: editor.getValue() })
+            });
+
+            const startTime = performance.now();
             try {
                 const res = await fetch('/api/run', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ language: lang.value, code: editor.value })
+                    body: JSON.stringify({ path: activePath })
                 });
-                output.innerText = await res.text();
-            } catch (e) {
-                output.innerText = "エラー: " + e;
+                const result = await res.text();
+                const duration = ((performance.now() - startTime) / 1000).toFixed(2);
+                output.innerText = result + `\n\n-----------------------------------\n[Finished in ${duration}s]`;
+            } catch (err) {
+                output.innerText = `実行失敗: ${err}`;
             }
         };
     </script>
