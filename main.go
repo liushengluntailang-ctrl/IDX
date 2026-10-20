@@ -15,8 +15,14 @@ type ExecuteRequest struct {
 }
 
 func main() {
-	// 静的ファイル（HTML/CSS/JS）の配信
-	http.Handle("/", http.FileServer(http.Dir("./public")))
+	// 直下の index.html などの静的ファイルを配信
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/" {
+			http.ServeFile(w, r, "index.html")
+			return
+		}
+		http.FileServer(http.Dir(".")).ServeHTTP(w, r)
+	})
 
 	// コード実行API
 	http.HandleFunc("/api/run", func(w http.ResponseWriter, r *http.Request) {
@@ -32,7 +38,6 @@ func main() {
 		if req.Language == "csharp" {
 			// C# の実行
 			os.WriteFile("/tmp/Program.cs", []byte(req.Code), 0644)
-			// 事前に作っておいた.NETプロジェクトのProgram.csを上書きして実行
 			cmd = exec.Command("sh", "-c", "cp /tmp/Program.cs /app/csharp/Program.cs && cd /app/csharp && dotnet run")
 		} else if req.Language == "python" {
 			// Python の実行
