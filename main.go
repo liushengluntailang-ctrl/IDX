@@ -33,13 +33,49 @@ type ExecRequest struct {
 func main() {
 	workspaceRoot := "/app/workspace"
 
-	// 初期ファイルがなければ作成
-	initFile := filepath.Join(workspaceRoot, "Program.cs")
-	if _, err := os.Stat(initFile); os.IsNotExist(err) {
-		os.WriteFile(initFile, []byte("using System;\n\nclass Program {\n    static void Main() {\n        Console.WriteLine(\"Hello from Custom Alpine IDX!\");\n    }\n}"), 0644)
+	// 初期Qt QMLファイル
+	qmlSample := filepath.Join(workspaceRoot, "main.qml")
+	if _, err := os.Stat(qmlSample); os.IsNotExist(err) {
+		os.WriteFile(qmlSample, []byte(`import QtQuick 2.15
+import QtQuick.Controls 2.15
+
+ApplicationWindow {
+    visible: true
+    width: 320
+    height: 480
+    title: "Qt Quick Window"
+
+    property int count: 0
+
+    Column {
+        anchors.centerIn: parent
+        spacing: 16
+
+        Text {
+            text: "Qt QML Interactive"
+            font.pixelSize: 20
+            color: "#00b4d8"
+            anchors.horizontalCenter: parent.horizontalCenter
+        }
+
+        Text {
+            text: "Count: " + count
+            font.pixelSize: 18
+            color: "#ffffff"
+            anchors.horizontalCenter: parent.horizontalCenter
+        }
+
+        Button {
+            text: "Qt Button (Click Me)"
+            anchors.horizontalCenter: parent.horizontalCenter
+            onClicked: {
+                count += 1
+            }
+        }
+    }
+}`), 0644)
 	}
 
-	// 1. トップ画面 (index.html)
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/" {
 			http.ServeFile(w, r, "index.html")
@@ -48,7 +84,7 @@ func main() {
 		http.FileServer(http.Dir(".")).ServeHTTP(w, r)
 	})
 
-	// 2. ファイル一覧取得 API
+	// ファイル一覧
 	http.HandleFunc("/api/files", func(w http.ResponseWriter, r *http.Request) {
 		var list []FileItem
 		filepath.Walk(workspaceRoot, func(p string, info os.FileInfo, err error) error {
@@ -56,18 +92,14 @@ func main() {
 				return nil
 			}
 			rel, _ := filepath.Rel(workspaceRoot, p)
-			list = append(list, FileItem{
-				Name:  info.Name(),
-				Path:  rel,
-				IsDir: info.IsDir(),
-			})
+			list = append(list, FileItem{Name: info.Name(), Path: rel, IsDir: info.IsDir()})
 			return nil
 		})
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(list)
 	})
 
-	// 3. ファイル内容読み込み API
+	// 読み込み
 	http.HandleFunc("/api/load", func(w http.ResponseWriter, r *http.Request) {
 		path := filepath.Join(workspaceRoot, r.URL.Query().Get("path"))
 		data, err := os.ReadFile(path)
@@ -78,7 +110,7 @@ func main() {
 		w.Write(data)
 	})
 
-	// 4. ファイル保存 API
+	// 保存
 	http.HandleFunc("/api/save", func(w http.ResponseWriter, r *http.Request) {
 		var req SaveRequest
 		json.NewDecoder(r.Body).Decode(&req)
@@ -87,7 +119,7 @@ func main() {
 		w.Write([]byte("OK"))
 	})
 
-	// 5. 新規ファイル / フォルダ作成 API
+	// 作成
 	http.HandleFunc("/api/create", func(w http.ResponseWriter, r *http.Request) {
 		var req CreateRequest
 		json.NewDecoder(r.Body).Decode(&req)
@@ -101,7 +133,7 @@ func main() {
 		w.Write([]byte("OK"))
 	})
 
-	// 6. 爆速マルチ言語 実行 API (拡張子判定)
+	// ★ 単一ファイルではなく「プロジェクト単位」で爆速実行するエンジン
 	http.HandleFunc("/api/run", func(w http.ResponseWriter, r *http.Request) {
 		var req ExecRequest
 		json.NewDecoder(r.Body).Decode(&req)
@@ -112,30 +144,52 @@ func main() {
 		var cmd *exec.Cmd
 
 		switch ext {
-		case ".cs": // C#
-			cmd = exec.Command("sh", "-c", fmt.Sprintf("cp '%s' /app/csharp_env/Program.cs && cd /app/csharp_env && dotnet run", fullPath))
-		case ".py": // Python
-			cmd = exec.Command("python3", fullPath)
-		case ".go": // Go
-			cmd = exec.Command("sh", "-c", fmt.Sprintf("cd '%s' && go run '%s'", dir, fullPath))
-		case ".rs": // Rust
-			cmd = exec.Command("sh", "-c", fmt.Sprintf("rustc '%s' -o /tmp/rust_app && /tmp/rust_app", fullPath))
-		case ".cpp", ".cc": // C++
-			cmd = exec.Command("sh", "-c", fmt.Sprintf("g++ '%s' -o /tmp/cpp_app && /tmp/cpp_app", fullPath))
-		case ".c": // C言語
-			cmd = exec.Command("sh", "-c", fmt.Sprintf("gcc '%s' -o /tmp/c_app && /tmp/c_app", fullPath))
-		case ".js": // JavaScript
-			cmd = exec.Command("node", fullPath)
-		case ".sh": // Shell
-			cmd = exec.Command("sh", fullPath)
+		case ".cs":
+			// プロジェクトルートを探して dotnet run、なければディレクトリ内の全 .cs をプロジェクト化して実行
+			cmd = exec.Command("sh", "-c", fmt.Sprintf(`
+				cd '%s'
+				if [ -f *.csproj ]; then
+					dotnet run
+				else
+					cp *.cs /app/csharp_env/ 2>/dev/null || true
+					cd /app/csharp_env && dotnet run
+				fi
+			`, dir))
+
+		case ".rs":
+			// Cargo.toml があれば cargo run、なければディレクトリ内の全 .rs を結合コンパイル
+			cmd = exec.Command("sh", "-c", fmt.Sprintf(`
+				cd '%s'
+				if [ -f Cargo.toml ]; then
+					cargo run
+				else
+					rustc *.rs -o /tmp/rust_app && /tmp/rust_app
+				fi
+			`, dir))
+
+		case ".go":
+			// ディレクトリ内の全 Go ファイル（パッケージ全体）をリンクして実行
+			cmd = exec.Command("sh", "-c", fmt.Sprintf("cd '%s' && go run .", dir))
+
+		case ".cpp", ".c":
+			// ディレクトリ内の全 C/C++ ファイルをリンクビルド
+			cmd = exec.Command("sh", "-c", fmt.Sprintf("cd '%s' && g++ *.cpp *.c -o /tmp/native_app 2>/dev/null || g++ '%s' -o /tmp/native_app && /tmp/native_app", dir, fullPath))
+
+		case ".py":
+			// ディレクトリ全体を import できるようにカレントディレクトリから実行
+			cmd = exec.Command("sh", "-c", fmt.Sprintf("cd '%s' && python3 '%s'", dir, fullPath))
+
+		case ".js", ".ts":
+			cmd = exec.Command("sh", "-c", fmt.Sprintf("cd '%s' && node '%s'", dir, fullPath))
+
 		default:
-			fmt.Fprintf(w, "未対応の拡張子です: %s", ext)
+			fmt.Fprintf(w, "実行対象外のファイルです: %s", ext)
 			return
 		}
 
 		out, err := cmd.CombinedOutput()
 		if err != nil {
-			fmt.Fprintf(w, "%s\n[Process exited with error]", string(out))
+			fmt.Fprintf(w, "%s\n[ビルド/実行エラー: exit status]", string(out))
 			return
 		}
 		w.Write(out)
@@ -145,6 +199,6 @@ func main() {
 	if port == "" {
 		port = "10000"
 	}
-	fmt.Println("Custom IDX Server is listening on port " + port)
+	fmt.Println("Custom Project IDX Server is running on :" + port)
 	http.ListenAndServe(":"+port, nil)
 }
