@@ -22,7 +22,6 @@
         .sidebar-actions i:hover, .sidebar-actions i:focus { color: #fff; }
         #file-tree { flex: 1; overflow-y: auto; padding-top: 5px; list-style: none; outline: none; }
         
-        /* ファイルツリー：キーボードフォーカス対応 */
         .tree-item { padding: 4px 15px; cursor: pointer; display: flex; align-items: center; justify-content: space-between; font-size: 13px; position: relative; outline: none; }
         .tree-item:hover, .tree-item:focus { background: #2a2d2e; }
         .tree-item.active { background: #37373d; color: #fff; border-left: 2px solid #007acc; }
@@ -56,16 +55,25 @@
         #terminal-prompt { color: #4ec9b0; font-weight: bold; font-size: 13px; margin-right: 8px; }
         #cmd-input { flex: 1; background: transparent; border: none; color: #fff; font-family: inherit; font-size: 13px; outline: none; }
 
-        #modal-overlay { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 9999; background: rgba(0,0,0,0.3); }
-        #quick-input-box { position: absolute; top: 20px; left: 50%; transform: translateX(-50%); width: 450px; background: #252526; border: 1px solid #007acc; padding: 8px; }
-        #quick-input { width: 100%; background: #3c3c3c; border: 1px solid #3c3c3c; color: #fff; font-size: 13px; padding: 6px; outline: none; }
+        /* ★ キャンセル機能付きの改良型クイック入力ダイアログ */
+        #modal-overlay { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 9999; background: rgba(0,0,0,0.5); cursor: pointer; }
+        #quick-input-box { position: absolute; top: 20px; left: 50%; transform: translateX(-50%); width: 480px; background: #252526; border: 1px solid #007acc; box-shadow: 0 8px 24px rgba(0,0,0,0.8); padding: 10px; display: flex; flex-direction: column; gap: 8px; cursor: default; border-radius: 4px; }
+        #quick-input-header { display: flex; justify-content: space-between; align-items: center; font-size: 11px; color: #aaa; }
+        #quick-close-btn { cursor: pointer; font-size: 14px; color: #888; transition: 0.2s; }
+        #quick-close-btn:hover { color: #fff; }
+        #quick-input { width: 100%; background: #3c3c3c; border: 1px solid #3c3c3c; color: #fff; font-size: 13px; padding: 6px 10px; outline: none; border-radius: 2px; }
+        #quick-input:focus { border-color: #007acc; }
     </style>
 </head>
 <body>
 
+    <!-- キャンセル可能なクイック入力モーダル -->
     <div id="modal-overlay">
-        <div id="quick-input-box">
-            <span id="quick-input-label" style="font-size:11px; color:#888;">ファイル名を入力</span>
+        <div id="quick-input-box" onclick="event.stopPropagation()">
+            <div id="quick-input-header">
+                <span id="quick-input-label">ファイル名を入力 (Escでキャンセル)</span>
+                <i class="fa-solid fa-xmark" id="quick-close-btn" title="キャンセル"></i>
+            </div>
             <input type="text" id="quick-input" autocomplete="off" />
         </div>
     </div>
@@ -153,7 +161,6 @@
         require.config({ paths: { vs: 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs' } });
         require(['vs/editor/editor.main'], function () {
 
-            // ★ バグ修正3：Monaco Editorに未定義の言語（Swift & QML）のシンタックスカラーを独自登録
             monaco.languages.register({ id: 'swift' });
             monaco.languages.setMonarchTokensProvider('swift', {
                 keywords: ['import', 'struct', 'class', 'var', 'let', 'func', 'some', 'View', 'body', 'return', 'if', 'else', 'for', 'in', 'while'],
@@ -198,7 +205,6 @@
                 }
             });
 
-            // ★ バグ修正2：インテリセンス・補完機能を強力に全有効化
             editor = monaco.editor.create(monacoContainer, {
                 value: '// ファイルを開いてください',
                 language: 'plaintext',
@@ -242,7 +248,6 @@
             });
         }
 
-        // ファイルツリーの読み込み（キーボード操作対応）
         async function loadTree() {
             const res = await fetch('/api/files');
             const files = await res.json();
@@ -253,7 +258,7 @@
             files.forEach(f => {
                 const li = document.createElement('li');
                 li.className = 'tree-item' + (f.path === activePath ? ' active' : '');
-                li.tabIndex = 0; // ★ バグ修正1：キーボードフォーカスを有効化
+                li.tabIndex = 0;
 
                 const ext = f.name.split('.').pop().toLowerCase();
                 let icon = f.isDir ? 'fa-regular fa-folder' : 'fa-regular fa-file-code';
@@ -268,10 +273,8 @@
                     <i class="fa-solid fa-trash delete-btn" title="削除" tabindex="0"></i>
                 `;
 
-                // マウスクリックで開く
                 li.querySelector('.left-group').onclick = () => openFile(f.path);
 
-                // ★ バグ修正1：キーボード操作（Enter / Spaceでファイルを開く、矢印キーで上下移動）
                 li.onkeydown = (e) => {
                     if (e.key === 'Enter' || e.key === ' ') {
                         e.preventDefault();
@@ -287,7 +290,6 @@
                     }
                 };
 
-                // 削除機能（クリック & キーボードEnter対応）
                 const delBtn = li.querySelector('.delete-btn');
                 const triggerDelete = async (e) => {
                     e.stopPropagation();
@@ -312,7 +314,6 @@
             });
         }
 
-        // ファイルを開く＆言語モード・色の完全再適用
         async function openFile(path) {
             activePath = path;
             document.getElementById('tab-filename').innerText = path;
@@ -344,10 +345,9 @@
                 const res = await fetch(`/api/load?path=${encodeURIComponent(path)}`);
                 const content = await res.text();
 
-                // ★ バグ修正3：言語モードを確実に設定し、色（シンタックスハイライト）を確実に適用
                 const targetLang = langMap[ext] || 'plaintext';
                 const oldModel = editor.getModel();
-                if (oldModel) oldModel.dispose(); // 古いモデルを破棄して完全に言語を切り替える
+                if (oldModel) oldModel.dispose();
                 const newModel = monaco.editor.createModel(content, targetLang);
                 editor.setModel(newModel);
             }
@@ -437,10 +437,18 @@
             }
         };
 
+        // ★★★ キャンセル制御の完全実装 ★★★
         const overlay = document.getElementById('modal-overlay');
         const input = document.getElementById('quick-input');
         const label = document.getElementById('quick-input-label');
+        const closeBtn = document.getElementById('quick-close-btn');
         let currentAction = null;
+
+        function closeModal() {
+            overlay.style.display = 'none';
+            input.value = "";
+            currentAction = null;
+        }
 
         function showPrompt(title, onConfirm) {
             label.innerText = title;
@@ -450,16 +458,33 @@
             currentAction = onConfirm;
         }
 
+        // 1. Enterで確定
         input.onkeydown = (e) => {
             if (e.key === 'Enter') {
                 const val = input.value.trim();
-                overlay.style.display = 'none';
+                closeModal();
                 if (val && currentAction) currentAction(val);
-            } else if (e.key === 'Escape') overlay.style.display = 'none';
+            }
         };
 
+        // 2. 右上の「✕」ボタンクリックでキャンセル
+        closeBtn.onclick = closeModal;
+
+        // 3. 背景の暗いエリアをクリックでキャンセル
+        overlay.onclick = (e) => {
+            if (e.target === overlay) closeModal();
+        };
+
+        // 4. 画面全体のどこにいても Esc キーを押せば最優先でキャンセル
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && overlay.style.display === 'block') {
+                e.preventDefault();
+                closeModal();
+            }
+        });
+
         document.getElementById('new-file-btn').onclick = () => {
-            showPrompt("新規ファイル名 (例: icon.svg, main.cs, test.rs, app.swift)", async (name) => {
+            showPrompt("新規ファイル名を入力 (Escでキャンセル)", async (name) => {
                 await fetch('/api/create', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -471,7 +496,7 @@
         };
 
         document.getElementById('new-folder-btn').onclick = () => {
-            showPrompt("新規フォルダ名", async (name) => {
+            showPrompt("新規フォルダ名を入力 (Escでキャンセル)", async (name) => {
                 await fetch('/api/create', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
