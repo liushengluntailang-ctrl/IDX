@@ -10,25 +10,25 @@
         body { display: flex; height: 100vh; background: #1e1e1e; color: #cccccc; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace; overflow: hidden; }
         
         #activity-bar { width: 48px; background: #333333; display: flex; flex-direction: column; align-items: center; padding-top: 10px; border-right: 1px solid #252525; }
-        .act-btn { width: 48px; height: 48px; display: flex; justify-content: center; align-items: center; color: #858585; cursor: pointer; font-size: 20px; transition: 0.2s; }
-        .act-btn:hover, .act-btn.active { color: #ffffff; }
+        .act-btn { width: 48px; height: 48px; display: flex; justify-content: center; align-items: center; color: #858585; cursor: pointer; font-size: 20px; transition: 0.2s; outline: none; }
+        .act-btn:hover, .act-btn.active, .act-btn:focus { color: #ffffff; }
         .act-btn.run-btn { color: #4ec9b0; }
-        .act-btn.run-btn:hover { color: #85e8d3; transform: scale(1.1); }
+        .act-btn.run-btn:hover, .act-btn.run-btn:focus { color: #85e8d3; transform: scale(1.1); }
         .act-btn.ui-btn { color: #e5c07b; }
 
         #sidebar { width: 240px; background: #252526; display: flex; flex-direction: column; border-right: 1px solid #191919; }
         #sidebar-header { padding: 10px 15px; font-size: 11px; font-weight: bold; text-transform: uppercase; color: #bbbbbb; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #2d2d2d; }
-        .sidebar-actions i { margin-left: 10px; cursor: pointer; }
-        .sidebar-actions i:hover { color: #fff; }
-        #file-tree { flex: 1; overflow-y: auto; padding-top: 5px; list-style: none; }
+        .sidebar-actions i { margin-left: 10px; cursor: pointer; outline: none; }
+        .sidebar-actions i:hover, .sidebar-actions i:focus { color: #fff; }
+        #file-tree { flex: 1; overflow-y: auto; padding-top: 5px; list-style: none; outline: none; }
         
-        /* ファイルツリー & 削除ボタン */
-        .tree-item { padding: 4px 15px; cursor: pointer; display: flex; align-items: center; justify-content: space-between; font-size: 13px; position: relative; }
-        .tree-item:hover { background: #2a2d2e; }
-        .tree-item.active { background: #37373d; color: #fff; }
-        .tree-item .left-group { display: flex; align-items: center; gap: 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .tree-item .delete-btn { display: none; color: #e06c75; font-size: 12px; padding: 2px 5px; }
-        .tree-item:hover .delete-btn { display: block; }
+        /* ファイルツリー：キーボードフォーカス対応 */
+        .tree-item { padding: 4px 15px; cursor: pointer; display: flex; align-items: center; justify-content: space-between; font-size: 13px; position: relative; outline: none; }
+        .tree-item:hover, .tree-item:focus { background: #2a2d2e; }
+        .tree-item.active { background: #37373d; color: #fff; border-left: 2px solid #007acc; }
+        .tree-item .left-group { display: flex; align-items: center; gap: 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+        .tree-item .delete-btn { display: none; color: #e06c75; font-size: 12px; padding: 2px 5px; outline: none; }
+        .tree-item:hover .delete-btn, .tree-item:focus-within .delete-btn { display: block; }
         .tree-item .delete-btn:hover { color: #ff3344; transform: scale(1.2); }
 
         #workspace-area { flex: 1; display: flex; flex-direction: column; height: 100vh; overflow: hidden; position: relative; }
@@ -39,7 +39,6 @@
         #editor-container { flex: 1; height: 100%; position: relative; }
         #monaco-editor { width: 100%; height: 100%; }
 
-        /* メディアビューアー (MP3/MP4/画像用) */
         #media-viewer { display: none; width: 100%; height: 100%; background: #181818; align-items: center; justify-content: center; flex-direction: column; gap: 15px; }
         #media-viewer video { max-width: 90%; max-height: 80%; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.8); }
         #media-viewer audio { width: 80%; }
@@ -50,7 +49,6 @@
         #preview-viewport { width: 100%; height: calc(100% - 35px); background: #000; border: 2px solid #444; border-radius: 8px; overflow: hidden; position: relative; display: flex; flex-direction: column; }
         #preview-frame { flex: 1; border: none; width: 100%; height: 100%; background: #fff; }
 
-        /* 本物の対話型ターミナル */
         #terminal-panel { height: 200px; background: #141414; border-top: 1px solid #333; display: flex; flex-direction: column; font-family: "Consolas", monospace; }
         #terminal-header { height: 26px; background: #1e1e1e; display: flex; align-items: center; justify-content: space-between; padding: 0 12px; font-size: 11px; font-weight: bold; color: #aaa; border-bottom: 1px solid #2a2a2a; }
         #terminal-body { flex: 1; padding: 10px; overflow-y: auto; font-size: 13px; color: #d4d4d4; white-space: pre-wrap; }
@@ -72,27 +70,24 @@
         </div>
     </div>
 
-    <!-- 1. Activity Bar -->
     <div id="activity-bar">
-        <div class="act-btn active" title="Explorer"><i class="fa-regular fa-copy"></i></div>
-        <div class="act-btn run-btn" id="sidebar-run-btn" title="プロジェクト実行 (Run)"><i class="fa-solid fa-play"></i></div>
-        <div class="act-btn ui-btn" id="toggle-preview-btn" title="UIプレビュー切替"><i class="fa-solid fa-window-restore"></i></div>
+        <div class="act-btn active" tabindex="0" title="Explorer"><i class="fa-regular fa-copy"></i></div>
+        <div class="act-btn run-btn" tabindex="0" id="sidebar-run-btn" title="プロジェクト実行 (Run)"><i class="fa-solid fa-play"></i></div>
+        <div class="act-btn ui-btn" tabindex="0" id="toggle-preview-btn" title="UIプレビュー切替"><i class="fa-solid fa-window-restore"></i></div>
     </div>
 
-    <!-- 2. Sidebar -->
     <div id="sidebar">
         <div id="sidebar-header">
             <span>PROJECT EXPLORER</span>
             <div class="sidebar-actions">
-                <i class="fa-solid fa-file-circle-plus" id="new-file-btn" title="新規ファイル"></i>
-                <i class="fa-solid fa-folder-plus" id="new-folder-btn" title="新規フォルダ"></i>
-                <i class="fa-solid fa-rotate" id="refresh-tree-btn"></i>
+                <i class="fa-solid fa-file-circle-plus" tabindex="0" id="new-file-btn" title="新規ファイル"></i>
+                <i class="fa-solid fa-folder-plus" tabindex="0" id="new-folder-btn" title="新規フォルダ"></i>
+                <i class="fa-solid fa-rotate" tabindex="0" id="refresh-tree-btn"></i>
             </div>
         </div>
-        <ul id="file-tree"></ul>
+        <ul id="file-tree" tabindex="0"></ul>
     </div>
 
-    <!-- 3. Workspace Area -->
     <div id="workspace-area">
         <div id="tabs-bar">
             <div class="tab">
@@ -107,14 +102,11 @@
         </div>
 
         <div id="center-split">
-            <!-- テキストエディタ -->
             <div id="editor-container">
                 <div id="monaco-editor"></div>
-                <!-- メディア専用プレイヤー (MP3/MP4/画像用) -->
                 <div id="media-viewer"></div>
             </div>
 
-            <!-- UI プレビュー (SVG/HTML/QML/SwiftUI) -->
             <div id="preview-panel">
                 <div id="preview-header">
                     <span id="preview-title"><i class="fa-solid fa-layer-group"></i> UI Simulator / Preview</span>
@@ -126,16 +118,15 @@
             </div>
         </div>
 
-        <!-- 4. 本物の対話型Linuxターミナル -->
         <div id="terminal-panel">
             <div id="terminal-header">
                 <span>INTERACTIVE TERMINAL (Alpine Linux /bin/sh)</span>
                 <span id="clear-term" style="cursor:pointer;"><i class="fa-solid fa-ban"></i></span>
             </div>
-            <div id="terminal-body">// Alpine Linux シェル対話環境です。コマンドを入力してEnterで即時実行されます。</div>
+            <div id="terminal-body">// Alpine Linux シェル対話環境です。</div>
             <div id="terminal-input-line">
                 <span id="terminal-prompt">alpine:/workspace#</span>
-                <input type="text" id="cmd-input" placeholder="ls -la, git status, dotnet --info, etc..." autocomplete="off" />
+                <input type="text" id="cmd-input" placeholder="ls -la, dotnet run, cargo run, etc..." autocomplete="off" />
             </div>
         </div>
     </div>
@@ -153,18 +144,78 @@
 
         const langMap = {
             'cs': 'csharp', 'py': 'python', 'go': 'go', 'rs': 'rust',
-            'cpp': 'cpp', 'c': 'c', 'js': 'javascript', 'html': 'html',
-            'xml': 'xml', 'svg': 'xml', 'kt': 'kotlin', 'swift': 'swift', 'qml': 'javascript', 'json': 'json'
+            'cpp': 'cpp', 'c': 'c', 'js': 'javascript', 'ts': 'typescript',
+            'html': 'html', 'css': 'css', 'xml': 'xml', 'svg': 'xml',
+            'kt': 'kotlin', 'swift': 'swift', 'qml': 'qml', 'json': 'json',
+            'sh': 'shell', 'md': 'markdown'
         };
 
         require.config({ paths: { vs: 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs' } });
         require(['vs/editor/editor.main'], function () {
+
+            // ★ バグ修正3：Monaco Editorに未定義の言語（Swift & QML）のシンタックスカラーを独自登録
+            monaco.languages.register({ id: 'swift' });
+            monaco.languages.setMonarchTokensProvider('swift', {
+                keywords: ['import', 'struct', 'class', 'var', 'let', 'func', 'some', 'View', 'body', 'return', 'if', 'else', 'for', 'in', 'while'],
+                typeKeywords: ['Int', 'String', 'Double', 'Float', 'Bool', 'Color', 'VStack', 'HStack', 'Text', 'Button', 'Spacer', 'Image'],
+                tokenizer: {
+                    root: [
+                        [/@[a-zA-Z0-9_]+/, 'keyword.decorator'],
+                        [/[a-zA-Z_$][\w$]*/, {
+                            cases: {
+                                '@keywords': 'keyword',
+                                '@typeKeywords': 'type',
+                                '@default': 'identifier'
+                            }
+                        }],
+                        [/\/\/.*/, 'comment'],
+                        [/"([^"\\]|\\.)*"/, 'string'],
+                        [/\d+/, 'number'],
+                        [/[{}()\[\]]/, '@brackets'],
+                        [/[.,:]/, 'delimiter']
+                    ]
+                }
+            });
+
+            monaco.languages.register({ id: 'qml' });
+            monaco.languages.setMonarchTokensProvider('qml', {
+                keywords: ['import', 'property', 'signal', 'function', 'onClicked', 'anchors', 'alias'],
+                typeKeywords: ['ApplicationWindow', 'Window', 'Item', 'Rectangle', 'Text', 'Button', 'Column', 'Row', 'MouseArea', 'int', 'string', 'real', 'bool'],
+                tokenizer: {
+                    root: [
+                        [/[a-zA-Z_$][\w$]*/, {
+                            cases: {
+                                '@keywords': 'keyword',
+                                '@typeKeywords': 'type',
+                                '@default': 'identifier'
+                            }
+                        }],
+                        [/\/\/.*/, 'comment'],
+                        [/"([^"\\]|\\.)*"/, 'string'],
+                        [/\d+/, 'number'],
+                        [/[{}()\[\]]/, '@brackets']
+                    ]
+                }
+            });
+
+            // ★ バグ修正2：インテリセンス・補完機能を強力に全有効化
             editor = monaco.editor.create(monacoContainer, {
                 value: '// ファイルを開いてください',
                 language: 'plaintext',
                 theme: 'vs-dark',
                 automaticLayout: true,
-                fontSize: 14
+                fontSize: 14,
+                tabSize: 4,
+                insertSpaces: true,
+                autoClosingBrackets: 'always',
+                autoClosingQuotes: 'always',
+                formatOnPaste: true,
+                formatOnType: true,
+                suggestOnTriggerCharacters: true,
+                acceptSuggestionOnEnter: 'on',
+                wordBasedSuggestions: true,
+                quickSuggestions: { other: true, comments: true, strings: true },
+                snippetSuggestions: 'inline'
             });
 
             let timer;
@@ -191,7 +242,7 @@
             });
         }
 
-        // ファイルツリーの読み込み（削除ボタン付き）
+        // ファイルツリーの読み込み（キーボード操作対応）
         async function loadTree() {
             const res = await fetch('/api/files');
             const files = await res.json();
@@ -202,7 +253,8 @@
             files.forEach(f => {
                 const li = document.createElement('li');
                 li.className = 'tree-item' + (f.path === activePath ? ' active' : '');
-                
+                li.tabIndex = 0; // ★ バグ修正1：キーボードフォーカスを有効化
+
                 const ext = f.name.split('.').pop().toLowerCase();
                 let icon = f.isDir ? 'fa-regular fa-folder' : 'fa-regular fa-file-code';
                 if (['mp3', 'wav', 'ogg'].includes(ext)) icon = 'fa-solid fa-music';
@@ -213,13 +265,31 @@
                     <div class="left-group">
                         <i class="${icon}"></i> <span>${f.path}</span>
                     </div>
-                    <i class="fa-solid fa-trash delete-btn" title="削除"></i>
+                    <i class="fa-solid fa-trash delete-btn" title="削除" tabindex="0"></i>
                 `;
 
+                // マウスクリックで開く
                 li.querySelector('.left-group').onclick = () => openFile(f.path);
-                
-                // ★ 1. ファイル削除機能
-                li.querySelector('.delete-btn').onclick = async (e) => {
+
+                // ★ バグ修正1：キーボード操作（Enter / Spaceでファイルを開く、矢印キーで上下移動）
+                li.onkeydown = (e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        openFile(f.path);
+                    } else if (e.key === 'ArrowDown') {
+                        e.preventDefault();
+                        const next = li.nextElementSibling;
+                        if (next) next.focus();
+                    } else if (e.key === 'ArrowUp') {
+                        e.preventDefault();
+                        const prev = li.previousElementSibling;
+                        if (prev) prev.focus();
+                    }
+                };
+
+                // 削除機能（クリック & キーボードEnter対応）
+                const delBtn = li.querySelector('.delete-btn');
+                const triggerDelete = async (e) => {
                     e.stopPropagation();
                     if (confirm(`本当に "${f.path}" を完全に削除しますか？`)) {
                         await fetch('/api/delete', {
@@ -235,18 +305,19 @@
                         loadTree();
                     }
                 };
+                delBtn.onclick = triggerDelete;
+                delBtn.onkeydown = (e) => { if (e.key === 'Enter') triggerDelete(e); };
 
                 tree.appendChild(li);
             });
         }
 
-        // ★ 3 & 4. ファイルオープン（テキスト vs メディア自動判別）
+        // ファイルを開く＆言語モード・色の完全再適用
         async function openFile(path) {
             activePath = path;
             document.getElementById('tab-filename').innerText = path;
             const ext = path.split('.').pop().toLowerCase();
 
-            // メディアファイル（MP3 / MP4 / 画像）の判定
             if (['mp3', 'wav', 'ogg', 'mp4', 'webm', 'png', 'jpg', 'jpeg'].includes(ext)) {
                 monacoContainer.style.display = 'none';
                 mediaViewer.style.display = 'flex';
@@ -267,14 +338,18 @@
                     mediaViewer.innerHTML = `<img src="${fileUrl}" alt="${path}" />`;
                 }
             } else {
-                // 通常のテキスト/コード/XML/SVG
                 mediaViewer.style.display = 'none';
                 monacoContainer.style.display = 'block';
 
                 const res = await fetch(`/api/load?path=${encodeURIComponent(path)}`);
                 const content = await res.text();
-                editor.setValue(content);
-                monaco.editor.setModelLanguage(editor.getModel(), langMap[ext] || 'plaintext');
+
+                // ★ バグ修正3：言語モードを確実に設定し、色（シンタックスハイライト）を確実に適用
+                const targetLang = langMap[ext] || 'plaintext';
+                const oldModel = editor.getModel();
+                if (oldModel) oldModel.dispose(); // 古いモデルを破棄して完全に言語を切り替える
+                const newModel = monaco.editor.createModel(content, targetLang);
+                editor.setModel(newModel);
             }
 
             document.querySelectorAll('.tree-item').forEach(el => {
@@ -285,12 +360,10 @@
             executeUIRuntime();
         }
 
-        // ★ SVG / XML / SwiftUI / Qt プレビューレンダラー
         function executeUIRuntime() {
             const code = editor.getValue();
             const ext = activePath.split('.').pop().toLowerCase();
 
-            // SVG / XML のプレビュー
             if (ext === 'svg') {
                 previewTitle.innerHTML = '<i class="fa-solid fa-bezier-curve"></i> SVG Vector Preview';
                 previewFrame.srcdoc = `<html><body style="margin:0; display:flex; justify-content:center; align-items:center; height:100vh; background:#1e1e1e;">${code}</body></html>`;
@@ -301,15 +374,11 @@
                 previewFrame.srcdoc = code;
                 return;
             }
-
-            // QML
             if (ext === 'qml') {
                 previewTitle.innerHTML = '<i class="fa-solid fa-cubes"></i> Qt Quick Window';
                 previewFrame.srcdoc = `<!DOCTYPE html><html><head><style>body { margin:0; padding:20px; background:#2b2b2b; color:#fff; font-family:sans-serif; display:flex; flex-direction:column; align-items:center; justify-content:center; height:100vh; } .qt-btn { background:#4a4e52; color:#fff; border:1px solid #5a5e62; padding:8px 16px; border-radius:4px; cursor:pointer; font-weight:bold; }</style></head><body><div id="qt-root"></div><script>const qml = ${JSON.stringify(code)}; const state = {}; const pMatch = qml.match(/property\\s+int\\s+([a-zA-Z0-9_]+)\\s*:\\s*([0-9]+)/); if (pMatch) state[pMatch[1]] = parseInt(pMatch[2]); function render() { let html = '<div style="font-size:20px; font-weight:bold; margin-bottom:15px;">Qt QML Window</div>'; for (let k in state) { html += '<div style="font-size:18px; margin-bottom:10px;">Count: ' + state[k] + '</div>'; } html += '<button class="qt-btn" onclick="state.count++; render();">Qt PushButton (Click)</button>'; document.getElementById('qt-root').innerHTML = html; } render();<\/script></body></html>`;
                 return;
             }
-
-            // SwiftUI
             if (ext === 'swift') {
                 previewTitle.innerHTML = '<i class="fa-brands fa-apple"></i> SwiftUI Simulator';
                 previewFrame.srcdoc = `<!DOCTYPE html><html><head><script src="https://cdn.tailwindcss.com"></` + `script></head><body class="bg-gray-100 flex flex-col justify-center items-center h-screen"><div id="root" class="text-center"></div><script>let count = 0; function render() { document.getElementById('root').innerHTML = '<h2 class="text-xl font-bold mb-2">SwiftUI Native View</h2><div class="text-gray-600 mb-4 font-semibold">Count: ' + count + '</div><button onclick="count++; render();" class="px-6 py-2.5 bg-blue-600 text-white rounded-xl shadow active:scale-95 font-bold">Action Button</button>'; } render();<\/script></body></html>`;
@@ -322,7 +391,6 @@
             panel.style.display = panel.style.display === 'none' ? 'flex' : 'none';
         };
 
-        // ★ 2. 本物の対話型ターミナル実行処理
         cmdInput.onkeydown = async (e) => {
             if (e.key === 'Enter') {
                 const cmd = cmdInput.value.trim();
@@ -341,7 +409,7 @@
                     const out = await res.text();
                     terminalBody.innerText += out;
                     terminalBody.scrollTop = terminalBody.scrollHeight;
-                    loadTree(); // コマンドでファイルが作成・削除された場合にツリーを即時更新
+                    loadTree();
                 } catch (err) {
                     terminalBody.innerText += `Error: ${err}\n`;
                 }
@@ -350,7 +418,6 @@
 
         document.getElementById('clear-term').onclick = () => terminalBody.innerText = "// ターミナルをクリアしました";
 
-        // プロジェクトビルド (サイドバー [▶])
         document.getElementById('sidebar-run-btn').onclick = async () => {
             if (!activePath) return;
             terminalBody.innerText += `\n[Building Project] ${activePath} ...\n-----------------------------------\n`;
@@ -370,7 +437,6 @@
             }
         };
 
-        // 新規作成モーダル
         const overlay = document.getElementById('modal-overlay');
         const input = document.getElementById('quick-input');
         const label = document.getElementById('quick-input-label');
@@ -393,7 +459,7 @@
         };
 
         document.getElementById('new-file-btn').onclick = () => {
-            showPrompt("新規ファイル名 (例: icon.svg, layout.xml, sound.mp3)", async (name) => {
+            showPrompt("新規ファイル名 (例: icon.svg, main.cs, test.rs, app.swift)", async (name) => {
                 await fetch('/api/create', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
