@@ -41,7 +41,6 @@ type DeleteRequest struct {
 func main() {
 	workspaceRoot := "/app/workspace"
 
-	// 初期サンプルSVGファイルを作成
 	svgSample := filepath.Join(workspaceRoot, "logo.svg")
 	if _, err := os.Stat(svgSample); os.IsNotExist(err) {
 		os.WriteFile(svgSample, []byte(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
@@ -64,7 +63,6 @@ func main() {
 		http.FileServer(http.Dir(".")).ServeHTTP(w, r)
 	})
 
-	// ファイル一覧
 	http.HandleFunc("/api/files", func(w http.ResponseWriter, r *http.Request) {
 		var list []FileItem
 		filepath.Walk(workspaceRoot, func(p string, info os.FileInfo, err error) error {
@@ -79,7 +77,6 @@ func main() {
 		json.NewEncoder(w).Encode(list)
 	})
 
-	// テキスト読み込み
 	http.HandleFunc("/api/load", func(w http.ResponseWriter, r *http.Request) {
 		path := filepath.Join(workspaceRoot, r.URL.Query().Get("path"))
 		data, err := os.ReadFile(path)
@@ -90,13 +87,11 @@ func main() {
 		w.Write(data)
 	})
 
-	// バイナリ配信 (MP3, MP4, 画像などの直接ストリーミング)
 	http.HandleFunc("/api/raw", func(w http.ResponseWriter, r *http.Request) {
 		fullPath := filepath.Join(workspaceRoot, r.URL.Query().Get("path"))
 		http.ServeFile(w, r, fullPath)
 	})
 
-	// 保存
 	http.HandleFunc("/api/save", func(w http.ResponseWriter, r *http.Request) {
 		var req SaveRequest
 		json.NewDecoder(r.Body).Decode(&req)
@@ -105,21 +100,37 @@ func main() {
 		w.Write([]byte("OK"))
 	})
 
-	// 作成
+	// ★ エラーをしっかり返す安全なファイル作成処理
 	http.HandleFunc("/api/create", func(w http.ResponseWriter, r *http.Request) {
 		var req CreateRequest
-		json.NewDecoder(r.Body).Decode(&req)
-		fullPath := filepath.Join(workspaceRoot, req.Path)
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, "JSONデコードエラー: "+err.Error(), 400)
+			return
+		}
+		cleanPath := strings.TrimSpace(req.Path)
+		if cleanPath == "" {
+			http.Error(w, "パスが空です", 400)
+			return
+		}
+		fullPath := filepath.Join(workspaceRoot, cleanPath)
 		if req.IsDir {
-			os.MkdirAll(fullPath, 0755)
+			if err := os.MkdirAll(fullPath, 0755); err != nil {
+				http.Error(w, "フォルダ作成失敗: "+err.Error(), 500)
+				return
+			}
 		} else {
-			os.MkdirAll(filepath.Dir(fullPath), 0755)
-			os.WriteFile(fullPath, []byte(""), 0644)
+			if err := os.MkdirAll(filepath.Dir(fullPath), 0755); err != nil {
+				http.Error(w, "親フォルダ作成失敗: "+err.Error(), 500)
+				return
+			}
+			if err := os.WriteFile(fullPath, []byte(""), 0644); err != nil {
+				http.Error(w, "ファイル作成失敗: "+err.Error(), 500)
+				return
+			}
 		}
 		w.Write([]byte("OK"))
 	})
 
-	// ファイル / フォルダ削除 API
 	http.HandleFunc("/api/delete", func(w http.ResponseWriter, r *http.Request) {
 		var req DeleteRequest
 		json.NewDecoder(r.Body).Decode(&req)
@@ -132,7 +143,6 @@ func main() {
 		w.Write([]byte("OK"))
 	})
 
-	// 対話型ターミナル実行 API
 	http.HandleFunc("/api/cmd", func(w http.ResponseWriter, r *http.Request) {
 		var req CmdRequest
 		json.NewDecoder(r.Body).Decode(&req)
@@ -145,7 +155,6 @@ func main() {
 		w.Write(out)
 	})
 
-	// プロジェクトビルド & 実行 API
 	http.HandleFunc("/api/run", func(w http.ResponseWriter, r *http.Request) {
 		var req ExecRequest
 		json.NewDecoder(r.Body).Decode(&req)
