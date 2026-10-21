@@ -55,7 +55,6 @@
         #terminal-prompt { color: #4ec9b0; font-weight: bold; font-size: 13px; margin-right: 8px; }
         #cmd-input { flex: 1; background: transparent; border: none; color: #fff; font-family: inherit; font-size: 13px; outline: none; }
 
-        /* ★ キャンセル機能付きの改良型クイック入力ダイアログ */
         #modal-overlay { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 9999; background: rgba(0,0,0,0.5); cursor: pointer; }
         #quick-input-box { position: absolute; top: 20px; left: 50%; transform: translateX(-50%); width: 480px; background: #252526; border: 1px solid #007acc; box-shadow: 0 8px 24px rgba(0,0,0,0.8); padding: 10px; display: flex; flex-direction: column; gap: 8px; cursor: default; border-radius: 4px; }
         #quick-input-header { display: flex; justify-content: space-between; align-items: center; font-size: 11px; color: #aaa; }
@@ -67,7 +66,6 @@
 </head>
 <body>
 
-    <!-- キャンセル可能なクイック入力モーダル -->
     <div id="modal-overlay">
         <div id="quick-input-box" onclick="event.stopPropagation()">
             <div id="quick-input-header">
@@ -249,69 +247,73 @@
         }
 
         async function loadTree() {
-            const res = await fetch('/api/files');
-            const files = await res.json();
-            const tree = document.getElementById('file-tree');
-            tree.innerHTML = "";
-            if (!files) return;
+            try {
+                const res = await fetch('/api/files');
+                const files = await res.json();
+                const tree = document.getElementById('file-tree');
+                tree.innerHTML = "";
+                if (!files) return;
 
-            files.forEach(f => {
-                const li = document.createElement('li');
-                li.className = 'tree-item' + (f.path === activePath ? ' active' : '');
-                li.tabIndex = 0;
+                files.forEach(f => {
+                    const li = document.createElement('li');
+                    li.className = 'tree-item' + (f.path === activePath ? ' active' : '');
+                    li.tabIndex = 0;
 
-                const ext = f.name.split('.').pop().toLowerCase();
-                let icon = f.isDir ? 'fa-regular fa-folder' : 'fa-regular fa-file-code';
-                if (['mp3', 'wav', 'ogg'].includes(ext)) icon = 'fa-solid fa-music';
-                else if (['mp4', 'webm'].includes(ext)) icon = 'fa-solid fa-video';
-                else if (['svg', 'png', 'jpg'].includes(ext)) icon = 'fa-solid fa-image';
+                    const ext = f.name.split('.').pop().toLowerCase();
+                    let icon = f.isDir ? 'fa-regular fa-folder' : 'fa-regular fa-file-code';
+                    if (['mp3', 'wav', 'ogg'].includes(ext)) icon = 'fa-solid fa-music';
+                    else if (['mp4', 'webm'].includes(ext)) icon = 'fa-solid fa-video';
+                    else if (['svg', 'png', 'jpg'].includes(ext)) icon = 'fa-solid fa-image';
 
-                li.innerHTML = `
-                    <div class="left-group">
-                        <i class="${icon}"></i> <span>${f.path}</span>
-                    </div>
-                    <i class="fa-solid fa-trash delete-btn" title="削除" tabindex="0"></i>
-                `;
+                    li.innerHTML = `
+                        <div class="left-group">
+                            <i class="${icon}"></i> <span>${f.path}</span>
+                        </div>
+                        <i class="fa-solid fa-trash delete-btn" title="削除" tabindex="0"></i>
+                    `;
 
-                li.querySelector('.left-group').onclick = () => openFile(f.path);
+                    li.querySelector('.left-group').onclick = () => openFile(f.path);
 
-                li.onkeydown = (e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
-                        openFile(f.path);
-                    } else if (e.key === 'ArrowDown') {
-                        e.preventDefault();
-                        const next = li.nextElementSibling;
-                        if (next) next.focus();
-                    } else if (e.key === 'ArrowUp') {
-                        e.preventDefault();
-                        const prev = li.previousElementSibling;
-                        if (prev) prev.focus();
-                    }
-                };
-
-                const delBtn = li.querySelector('.delete-btn');
-                const triggerDelete = async (e) => {
-                    e.stopPropagation();
-                    if (confirm(`本当に "${f.path}" を完全に削除しますか？`)) {
-                        await fetch('/api/delete', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ path: f.path })
-                        });
-                        if (activePath === f.path) {
-                            activePath = "";
-                            editor.setValue("");
-                            document.getElementById('tab-filename').innerText = "ファイルを選択";
+                    li.onkeydown = (e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            openFile(f.path);
+                        } else if (e.key === 'ArrowDown') {
+                            e.preventDefault();
+                            const next = li.nextElementSibling;
+                            if (next) next.focus();
+                        } else if (e.key === 'ArrowUp') {
+                            e.preventDefault();
+                            const prev = li.previousElementSibling;
+                            if (prev) prev.focus();
                         }
-                        loadTree();
-                    }
-                };
-                delBtn.onclick = triggerDelete;
-                delBtn.onkeydown = (e) => { if (e.key === 'Enter') triggerDelete(e); };
+                    };
 
-                tree.appendChild(li);
-            });
+                    const delBtn = li.querySelector('.delete-btn');
+                    const triggerDelete = async (e) => {
+                        e.stopPropagation();
+                        if (confirm(`本当に "${f.path}" を完全に削除しますか？`)) {
+                            await fetch('/api/delete', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ path: f.path })
+                            });
+                            if (activePath === f.path) {
+                                activePath = "";
+                                editor.setValue("");
+                                document.getElementById('tab-filename').innerText = "ファイルを選択";
+                            }
+                            loadTree();
+                        }
+                    };
+                    delBtn.onclick = triggerDelete;
+                    delBtn.onkeydown = (e) => { if (e.key === 'Enter') triggerDelete(e); };
+
+                    tree.appendChild(li);
+                });
+            } catch(e) {
+                console.error("Tree load error:", e);
+            }
         }
 
         async function openFile(path) {
@@ -437,7 +439,7 @@
             }
         };
 
-        // ★★★ キャンセル制御の完全実装 ★★★
+        // ★★★ ファイル作成バグ修正箇所 ★★★
         const overlay = document.getElementById('modal-overlay');
         const input = document.getElementById('quick-input');
         const label = document.getElementById('quick-input-label');
@@ -458,24 +460,24 @@
             currentAction = onConfirm;
         }
 
-        // 1. Enterで確定
+        // Enterで確定（コールバックを退避してから閉じる）
         input.onkeydown = (e) => {
             if (e.key === 'Enter') {
                 const val = input.value.trim();
+                const action = currentAction; // ← ★ 退避！
                 closeModal();
-                if (val && currentAction) currentAction(val);
+                if (val && action) {
+                    action(val); // ← ★ 確実に実行！
+                }
             }
         };
 
-        // 2. 右上の「✕」ボタンクリックでキャンセル
         closeBtn.onclick = closeModal;
 
-        // 3. 背景の暗いエリアをクリックでキャンセル
         overlay.onclick = (e) => {
             if (e.target === overlay) closeModal();
         };
 
-        // 4. 画面全体のどこにいても Esc キーを押せば最優先でキャンセル
         window.addEventListener('keydown', (e) => {
             if (e.key === 'Escape' && overlay.style.display === 'block') {
                 e.preventDefault();
@@ -483,26 +485,46 @@
             }
         });
 
+        // 新規ファイル作成ハンドラー
         document.getElementById('new-file-btn').onclick = () => {
-            showPrompt("新規ファイル名を入力 (Escでキャンセル)", async (name) => {
-                await fetch('/api/create', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ path: name, isDir: false })
-                });
-                await loadTree();
-                openFile(name);
+            showPrompt("新規ファイル名を入力 (例: Program.cs, main.py)", async (name) => {
+                try {
+                    const res = await fetch('/api/create', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ path: name, isDir: false })
+                    });
+                    if (res.ok) {
+                        await loadTree();
+                        openFile(name);
+                    } else {
+                        const err = await res.text();
+                        alert("ファイル作成失敗: " + err);
+                    }
+                } catch(err) {
+                    alert("通信エラー: " + err);
+                }
             });
         };
 
+        // 新規フォルダ作成ハンドラー
         document.getElementById('new-folder-btn').onclick = () => {
-            showPrompt("新規フォルダ名を入力 (Escでキャンセル)", async (name) => {
-                await fetch('/api/create', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ path: name, isDir: true })
-                });
-                await loadTree();
+            showPrompt("新規フォルダ名を入力", async (name) => {
+                try {
+                    const res = await fetch('/api/create', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ path: name, isDir: true })
+                    });
+                    if (res.ok) {
+                        await loadTree();
+                    } else {
+                        const err = await res.text();
+                        alert("フォルダ作成失敗: " + err);
+                    }
+                } catch(err) {
+                    alert("通信エラー: " + err);
+                }
             });
         };
 
