@@ -2,238 +2,104 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>Alpine Custom Project IDX</title>
+    <title>Alpine Custom Project IDX - Agent Edition</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs/editor/editor.main.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { display: flex; height: 100vh; background: #1e1e1e; color: #cccccc; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace; overflow: hidden; }
-        
-        #activity-bar { width: 48px; background: #333333; display: flex; flex-direction: column; align-items: center; padding-top: 10px; border-right: 1px solid #252525; }
-        .act-btn { width: 48px; height: 48px; display: flex; justify-content: center; align-items: center; color: #858585; cursor: pointer; font-size: 20px; transition: 0.2s; outline: none; }
-        .act-btn:hover, .act-btn.active, .act-btn:focus { color: #ffffff; }
-        .act-btn.run-btn { color: #4ec9b0; }
-        .act-btn.run-btn:hover, .act-btn.run-btn:focus { color: #85e8d3; transform: scale(1.1); }
-        .act-btn.ui-btn { color: #e5c07b; }
-
-        #sidebar { width: 240px; background: #252526; display: flex; flex-direction: column; border-right: 1px solid #191919; }
-        #sidebar-header { padding: 10px 15px; font-size: 11px; font-weight: bold; text-transform: uppercase; color: #bbbbbb; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #2d2d2d; }
-        .sidebar-actions i { margin-left: 10px; cursor: pointer; outline: none; }
-        .sidebar-actions i:hover, .sidebar-actions i:focus { color: #fff; }
-        #file-tree { flex: 1; overflow-y: auto; padding-top: 5px; list-style: none; outline: none; }
-        
-        .tree-item { padding: 4px 15px; cursor: pointer; display: flex; align-items: center; justify-content: space-between; font-size: 13px; position: relative; outline: none; }
-        .tree-item:hover, .tree-item:focus { background: #2a2d2e; }
+        body { display: flex; height: 100vh; background: #1e1e1e; color: #ccc; font-family: sans-serif; overflow: hidden; }
+        #activity-bar { width: 48px; background: #333; display: flex; flex-direction: column; align-items: center; padding-top: 10px; border-right: 1px solid #222; }
+        .act-btn { width: 48px; height: 48px; display: flex; justify-content: center; align-items: center; color: #888; cursor: pointer; font-size: 18px; }
+        .act-btn:hover, .act-btn.active { color: #fff; }
+        .act-btn.ai-btn { color: #c678dd; }
+        #sidebar { width: 220px; background: #252526; display: flex; flex-direction: column; border-right: 1px solid #191919; }
+        #sidebar-header { padding: 10px; font-size: 11px; font-weight: bold; color: #aaa; display: flex; justify-content: space-between; border-bottom: 1px solid #333; }
+        #file-tree { flex: 1; overflow-y: auto; list-style: none; }
+        .tree-item { padding: 5px 12px; cursor: pointer; display: flex; justify-content: space-between; font-size: 13px; }
+        .tree-item:hover { background: #2a2d2e; }
         .tree-item.active { background: #37373d; color: #fff; border-left: 2px solid #007acc; }
-        .tree-item .left-group { display: flex; align-items: center; gap: 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
-        .tree-item .delete-btn { display: none; color: #e06c75; font-size: 12px; padding: 2px 5px; outline: none; }
-        .tree-item:hover .delete-btn, .tree-item:focus-within .delete-btn { display: block; }
-        .tree-item .delete-btn:hover { color: #ff3344; transform: scale(1.2); }
-
-        #workspace-area { flex: 1; display: flex; flex-direction: column; height: 100vh; overflow: hidden; position: relative; }
-        #tabs-bar { height: 35px; background: #252526; display: flex; align-items: center; justify-content: space-between; padding-right: 10px; border-bottom: 1px solid #1e1e1e; }
-        .tab { height: 100%; padding: 0 16px; background: #1e1e1e; color: #ffffff; display: flex; align-items: center; gap: 8px; font-size: 13px; border-top: 2px solid #007acc; }
-
-        #center-split { flex: 1; display: flex; position: relative; overflow: hidden; }
-        #editor-container { flex: 1; height: 100%; position: relative; }
-        #monaco-editor { width: 100%; height: 100%; }
-
-        #media-viewer { display: none; width: 100%; height: 100%; background: #181818; align-items: center; justify-content: center; flex-direction: column; gap: 15px; }
-        #media-viewer video { max-width: 90%; max-height: 80%; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.8); }
-        #media-viewer audio { width: 80%; }
-        #media-viewer img { max-width: 90%; max-height: 80%; object-fit: contain; }
-
-        #preview-panel { width: 420px; height: 100%; background: #121212; border-left: 2px solid #333; display: flex; flex-direction: column; align-items: center; padding: 10px; }
-        #preview-header { width: 100%; height: 26px; color: #aaa; display: flex; align-items: center; justify-content: space-between; font-size: 11px; margin-bottom: 5px; }
-        #preview-viewport { width: 100%; height: calc(100% - 35px); background: #000; border: 2px solid #444; border-radius: 8px; overflow: hidden; position: relative; display: flex; flex-direction: column; }
-        #preview-frame { flex: 1; border: none; width: 100%; height: 100%; background: #fff; }
-
-        #terminal-panel { height: 200px; background: #141414; border-top: 1px solid #333; display: flex; flex-direction: column; font-family: "Consolas", monospace; }
-        #terminal-header { height: 26px; background: #1e1e1e; display: flex; align-items: center; justify-content: space-between; padding: 0 12px; font-size: 11px; font-weight: bold; color: #aaa; border-bottom: 1px solid #2a2a2a; }
-        #terminal-body { flex: 1; padding: 10px; overflow-y: auto; font-size: 13px; color: #d4d4d4; white-space: pre-wrap; }
-        #terminal-input-line { display: flex; align-items: center; background: #181818; padding: 4px 10px; border-top: 1px solid #282828; }
-        #terminal-prompt { color: #4ec9b0; font-weight: bold; font-size: 13px; margin-right: 8px; }
-        #cmd-input { flex: 1; background: transparent; border: none; color: #fff; font-family: inherit; font-size: 13px; outline: none; }
-
-        #modal-overlay { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 9999; background: rgba(0,0,0,0.5); cursor: pointer; }
-        #quick-input-box { position: absolute; top: 20px; left: 50%; transform: translateX(-50%); width: 480px; background: #252526; border: 1px solid #007acc; box-shadow: 0 8px 24px rgba(0,0,0,0.8); padding: 10px; display: flex; flex-direction: column; gap: 8px; cursor: default; border-radius: 4px; }
-        #quick-input-header { display: flex; justify-content: space-between; align-items: center; font-size: 11px; color: #aaa; }
-        #quick-close-btn { cursor: pointer; font-size: 14px; color: #888; transition: 0.2s; }
-        #quick-close-btn:hover { color: #fff; }
-        #quick-input { width: 100%; background: #3c3c3c; border: 1px solid #3c3c3c; color: #fff; font-size: 13px; padding: 6px 10px; outline: none; border-radius: 2px; }
-        #quick-input:focus { border-color: #007acc; }
+        .tree-item .del { display: none; color: #e06c75; }
+        .tree-item:hover .del { display: block; }
+        #agent-panel { width: 320px; background: #21252b; border-right: 1px solid #181a1f; display: flex; flex-direction: column; }
+        #agent-header { padding: 10px; background: #282c34; font-size: 12px; font-weight: bold; color: #c678dd; display: flex; justify-content: space-between; }
+        #agent-settings { padding: 8px 10px; background: #1e2227; border-bottom: 1px solid #181a1f; }
+        #agent-model { width: 100%; background: #282c34; border: 1px solid #3e4451; color: #fff; padding: 4px; border-radius: 3px; font-size: 11px; }
+        #agent-messages { flex: 1; overflow-y: auto; padding: 10px; display: flex; flex-direction: column; gap: 8px; font-size: 12px; }
+        .chat-user { background: #3e4451; color: #fff; padding: 6px 10px; border-radius: 6px; align-self: flex-end; max-width: 90%; }
+        .chat-ai { background: #282c34; border: 1px solid #3e4451; color: #abb2bf; padding: 6px 10px; border-radius: 6px; align-self: flex-start; max-width: 95%; line-height: 1.4; }
+        .action-log { color: #98c379; font-family: monospace; font-size: 11px; margin-top: 4px; display: block; }
+        #agent-input-area { padding: 10px; background: #282c34; border-top: 1px solid #181a1f; display: flex; flex-direction: column; gap: 6px; }
+        #agent-input { width: 100%; height: 60px; background: #1e2227; border: 1px solid #3e4451; color: #fff; padding: 6px; font-size: 12px; border-radius: 3px; resize: none; outline: none; }
+        #agent-send-btn { background: #c678dd; color: #fff; border: none; padding: 7px; font-size: 12px; font-weight: bold; border-radius: 3px; cursor: pointer; }
+        #agent-send-btn:hover { background: #d896ea; }
+        #workspace-area { flex: 1; display: flex; flex-direction: column; height: 100vh; }
+        #tabs-bar { height: 35px; background: #252526; display: flex; align-items: center; padding-left: 10px; border-bottom: 1px solid #1e1e1e; font-size: 13px; color: #fff; }
+        #monaco-editor { flex: 1; }
+        #terminal-panel { height: 180px; background: #141414; border-top: 1px solid #333; display: flex; flex-direction: column; font-family: monospace; }
+        #terminal-header { height: 24px; background: #1e1e1e; padding: 0 10px; font-size: 11px; display: flex; align-items: center; justify-content: space-between; color: #aaa; }
+        #terminal-body { flex: 1; padding: 8px; overflow-y: auto; font-size: 12px; color: #d4d4d4; white-space: pre-wrap; }
+        #terminal-input-line { display: flex; padding: 4px 8px; background: #181818; }
+        #cmd-input { flex: 1; background: transparent; border: none; color: #fff; font-family: inherit; font-size: 12px; outline: none; }
     </style>
 </head>
 <body>
-
-    <div id="modal-overlay">
-        <div id="quick-input-box" onclick="event.stopPropagation()">
-            <div id="quick-input-header">
-                <span id="quick-input-label">ファイル名を入力 (Escでキャンセル)</span>
-                <i class="fa-solid fa-xmark" id="quick-close-btn" title="キャンセル"></i>
-            </div>
-            <input type="text" id="quick-input" autocomplete="off" />
-        </div>
-    </div>
-
     <div id="activity-bar">
-        <div class="act-btn active" tabindex="0" title="Explorer"><i class="fa-regular fa-copy"></i></div>
-        <div class="act-btn run-btn" tabindex="0" id="sidebar-run-btn" title="プロジェクト実行 (Run)"><i class="fa-solid fa-play"></i></div>
-        <div class="act-btn ui-btn" tabindex="0" id="toggle-preview-btn" title="UIプレビュー切替"><i class="fa-solid fa-window-restore"></i></div>
+        <div class="act-btn active" id="btn-explorer" title="Explorer"><i class="fa-regular fa-copy"></i></div>
+        <div class="act-btn ai-btn active" id="btn-agent" title="AI Agent (IDE自動操縦)"><i class="fa-solid fa-wand-magic-sparkles"></i></div>
     </div>
-
     <div id="sidebar">
         <div id="sidebar-header">
-            <span>PROJECT EXPLORER</span>
-            <div class="sidebar-actions">
-                <i class="fa-solid fa-file-circle-plus" tabindex="0" id="new-file-btn" title="新規ファイル"></i>
-                <i class="fa-solid fa-folder-plus" tabindex="0" id="new-folder-btn" title="新規フォルダ"></i>
-                <i class="fa-solid fa-rotate" tabindex="0" id="refresh-tree-btn"></i>
-            </div>
+            <span>EXPLORER</span>
+            <i class="fa-solid fa-rotate" id="btn-refresh" style="cursor:pointer;" title="更新"></i>
         </div>
-        <ul id="file-tree" tabindex="0"></ul>
+        <ul id="file-tree"></ul>
     </div>
-
+    <div id="agent-panel">
+        <div id="agent-header"><span><i class="fa-solid fa-robot"></i> IDE AUTO-AGENT</span></div>
+        <div id="agent-settings">
+            <select id="agent-model">
+                <option value="qwen/qwen-2.5-coder-32b-instruct:free" selected>Qwen 2.5 Coder (最強)</option>
+                <option value="deepseek/deepseek-r1:free">DeepSeek R1 (推論・デバッグ)</option>
+                <option value="meta-llama/llama-3.3-70b-instruct:free">Llama 3.3 70B (超安定)</option>
+                <option value="mistralai/mistral-nemo:free">Mistral Nemo (爆速)</option>
+            </select>
+        </div>
+        <div id="agent-messages">
+            <div class="chat-ai">指示を出してください。ファイル作成、コード記述、ターミナルでのビルド実行まで**IDEを全自動操作**します。</div>
+        </div>
+        <div id="agent-input-area">
+            <textarea id="agent-input" placeholder="例: C#で数当てゲームを作って動かして (Ctrl+Enterで送信)"></textarea>
+            <button id="agent-send-btn"><i class="fa-solid fa-bolt"></i> 自動操縦でアプリ作成</button>
+        </div>
+    </div>
     <div id="workspace-area">
-        <div id="tabs-bar">
-            <div class="tab">
-                <i class="fa-solid fa-code"></i>
-                <span id="tab-filename">ファイルを選択</span>
-            </div>
-            <div>
-                <button id="render-ui-btn" style="background:#007acc; color:#fff; border:none; padding:4px 10px; font-size:11px; cursor:pointer; border-radius:2px;">
-                    <i class="fa-solid fa-rotate-right"></i> UI更新
-                </button>
-            </div>
-        </div>
-
-        <div id="center-split">
-            <div id="editor-container">
-                <div id="monaco-editor"></div>
-                <div id="media-viewer"></div>
-            </div>
-
-            <div id="preview-panel">
-                <div id="preview-header">
-                    <span id="preview-title"><i class="fa-solid fa-layer-group"></i> UI Simulator / Preview</span>
-                    <span id="preview-status" style="color:#4ec9b0;">Live</span>
-                </div>
-                <div id="preview-viewport">
-                    <iframe id="preview-frame" sandbox="allow-scripts allow-modals"></iframe>
-                </div>
-            </div>
-        </div>
-
+        <div id="tabs-bar"><span id="tab-title">ファイルを選択してください</span></div>
+        <div id="monaco-editor"></div>
         <div id="terminal-panel">
-            <div id="terminal-header">
-                <span>INTERACTIVE TERMINAL (Alpine Linux /bin/sh)</span>
-                <span id="clear-term" style="cursor:pointer;"><i class="fa-solid fa-ban"></i></span>
-            </div>
-            <div id="terminal-body">// Alpine Linux シェル対話環境です。</div>
+            <div id="terminal-header"><span>TERMINAL OUTPUT</span><span id="btn-clear-term" style="cursor:pointer;"><i class="fa-solid fa-ban"></i></span></div>
+            <div id="terminal-body">// ターミナル準備完了</div>
             <div id="terminal-input-line">
-                <span id="terminal-prompt">alpine:/workspace#</span>
-                <input type="text" id="cmd-input" placeholder="ls -la, dotnet run, cargo run, etc..." autocomplete="off" />
+                <span style="color:#4ec9b0; margin-right:6px;">alpine#</span>
+                <input type="text" id="cmd-input" placeholder="手動コマンド入力..." autocomplete="off" />
             </div>
         </div>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs/loader.min.js"></script>
     <script>
-        let editor;
-        let activePath = "";
-        const terminalBody = document.getElementById("terminal-body");
-        const cmdInput = document.getElementById("cmd-input");
-        const previewFrame = document.getElementById("preview-frame");
-        const previewTitle = document.getElementById("preview-title");
-        const mediaViewer = document.getElementById("media-viewer");
-        const monacoContainer = document.getElementById("monaco-editor");
-
-        const langMap = {
-            'cs': 'csharp', 'py': 'python', 'go': 'go', 'rs': 'rust',
-            'cpp': 'cpp', 'c': 'c', 'js': 'javascript', 'ts': 'typescript',
-            'html': 'html', 'css': 'css', 'xml': 'xml', 'svg': 'xml',
-            'kt': 'kotlin', 'swift': 'swift', 'qml': 'qml', 'json': 'json',
-            'sh': 'shell', 'md': 'markdown'
-        };
+        let editor, activePath = "";
+        const termBody = document.getElementById("terminal-body");
 
         require.config({ paths: { vs: 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs' } });
         require(['vs/editor/editor.main'], function () {
-
-            monaco.languages.register({ id: 'swift' });
-            monaco.languages.setMonarchTokensProvider('swift', {
-                keywords: ['import', 'struct', 'class', 'var', 'let', 'func', 'some', 'View', 'body', 'return', 'if', 'else', 'for', 'in', 'while'],
-                typeKeywords: ['Int', 'String', 'Double', 'Float', 'Bool', 'Color', 'VStack', 'HStack', 'Text', 'Button', 'Spacer', 'Image'],
-                tokenizer: {
-                    root: [
-                        [/@[a-zA-Z0-9_]+/, 'keyword.decorator'],
-                        [/[a-zA-Z_$][\w$]*/, {
-                            cases: {
-                                '@keywords': 'keyword',
-                                '@typeKeywords': 'type',
-                                '@default': 'identifier'
-                            }
-                        }],
-                        [/\/\/.*/, 'comment'],
-                        [/"([^"\\]|\\.)*"/, 'string'],
-                        [/\d+/, 'number'],
-                        [/[{}()\[\]]/, '@brackets'],
-                        [/[.,:]/, 'delimiter']
-                    ]
-                }
-            });
-
-            monaco.languages.register({ id: 'qml' });
-            monaco.languages.setMonarchTokensProvider('qml', {
-                keywords: ['import', 'property', 'signal', 'function', 'onClicked', 'anchors', 'alias'],
-                typeKeywords: ['ApplicationWindow', 'Window', 'Item', 'Rectangle', 'Text', 'Button', 'Column', 'Row', 'MouseArea', 'int', 'string', 'real', 'bool'],
-                tokenizer: {
-                    root: [
-                        [/[a-zA-Z_$][\w$]*/, {
-                            cases: {
-                                '@keywords': 'keyword',
-                                '@typeKeywords': 'type',
-                                '@default': 'identifier'
-                            }
-                        }],
-                        [/\/\/.*/, 'comment'],
-                        [/"([^"\\]|\\.)*"/, 'string'],
-                        [/\d+/, 'number'],
-                        [/[{}()\[\]]/, '@brackets']
-                    ]
-                }
-            });
-
-            editor = monaco.editor.create(monacoContainer, {
-                value: '// ファイルを開いてください',
+            editor = monaco.editor.create(document.getElementById('monaco-editor'), {
+                value: '// IDE Ready',
                 language: 'plaintext',
                 theme: 'vs-dark',
                 automaticLayout: true,
-                fontSize: 14,
-                tabSize: 4,
-                insertSpaces: true,
-                autoClosingBrackets: 'always',
-                autoClosingQuotes: 'always',
-                formatOnPaste: true,
-                formatOnType: true,
-                suggestOnTriggerCharacters: true,
-                acceptSuggestionOnEnter: 'on',
-                wordBasedSuggestions: true,
-                quickSuggestions: { other: true, comments: true, strings: true },
-                snippetSuggestions: 'inline'
+                fontSize: 14
             });
-
-            let timer;
-            editor.onDidChangeModelContent(() => {
-                if (!activePath) return;
-                clearTimeout(timer);
-                timer = setTimeout(() => {
-                    saveFile();
-                    if (['svg', 'html', 'swift', 'qml'].some(ext => activePath.endsWith('.' + ext))) {
-                        executeUIRuntime();
-                    }
-                }, 600);
-            });
-
+            editor.onDidChangeModelContent(() => { if (activePath) setTimeout(saveFile, 500); });
             loadTree();
         });
 
@@ -247,288 +113,165 @@
         }
 
         async function loadTree() {
-            try {
-                const res = await fetch('/api/files');
-                const files = await res.json();
-                const tree = document.getElementById('file-tree');
-                tree.innerHTML = "";
-                if (!files) return;
-
-                files.forEach(f => {
-                    const li = document.createElement('li');
-                    li.className = 'tree-item' + (f.path === activePath ? ' active' : '');
-                    li.tabIndex = 0;
-
-                    const ext = f.name.split('.').pop().toLowerCase();
-                    let icon = f.isDir ? 'fa-regular fa-folder' : 'fa-regular fa-file-code';
-                    if (['mp3', 'wav', 'ogg'].includes(ext)) icon = 'fa-solid fa-music';
-                    else if (['mp4', 'webm'].includes(ext)) icon = 'fa-solid fa-video';
-                    else if (['svg', 'png', 'jpg'].includes(ext)) icon = 'fa-solid fa-image';
-
-                    li.innerHTML = `
-                        <div class="left-group">
-                            <i class="${icon}"></i> <span>${f.path}</span>
-                        </div>
-                        <i class="fa-solid fa-trash delete-btn" title="削除" tabindex="0"></i>
-                    `;
-
-                    li.querySelector('.left-group').onclick = () => openFile(f.path);
-
-                    li.onkeydown = (e) => {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                            e.preventDefault();
-                            openFile(f.path);
-                        } else if (e.key === 'ArrowDown') {
-                            e.preventDefault();
-                            const next = li.nextElementSibling;
-                            if (next) next.focus();
-                        } else if (e.key === 'ArrowUp') {
-                            e.preventDefault();
-                            const prev = li.previousElementSibling;
-                            if (prev) prev.focus();
-                        }
-                    };
-
-                    const delBtn = li.querySelector('.delete-btn');
-                    const triggerDelete = async (e) => {
-                        e.stopPropagation();
-                        if (confirm(`本当に "${f.path}" を完全に削除しますか？`)) {
-                            await fetch('/api/delete', {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ path: f.path })
-                            });
-                            if (activePath === f.path) {
-                                activePath = "";
-                                editor.setValue("");
-                                document.getElementById('tab-filename').innerText = "ファイルを選択";
-                            }
-                            loadTree();
-                        }
-                    };
-                    delBtn.onclick = triggerDelete;
-                    delBtn.onkeydown = (e) => { if (e.key === 'Enter') triggerDelete(e); };
-
-                    tree.appendChild(li);
-                });
-            } catch(e) {
-                console.error("Tree load error:", e);
-            }
+            const res = await fetch('/api/files');
+            const files = await res.json();
+            const tree = document.getElementById('file-tree');
+            tree.innerHTML = "";
+            if (!files) return;
+            files.forEach(f => {
+                if (f.isDir) return;
+                const li = document.createElement('li');
+                li.className = 'tree-item' + (f.path === activePath ? ' active' : '');
+                li.innerHTML = `<span>${f.path}</span><i class="fa-solid fa-trash del"></i>`;
+                li.onclick = () => openFile(f.path);
+                li.querySelector('.del').onclick = async (e) => {
+                    e.stopPropagation();
+                    if (confirm(`削除: ${f.path}?`)) {
+                        await fetch('/api/delete', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ path: f.path }) });
+                        loadTree();
+                    }
+                };
+                tree.appendChild(li);
+            });
         }
 
         async function openFile(path) {
             activePath = path;
-            document.getElementById('tab-filename').innerText = path;
+            document.getElementById('tab-title').innerText = path;
+            const res = await fetch(`/api/load?path=${encodeURIComponent(path)}`);
+            const content = await res.text();
             const ext = path.split('.').pop().toLowerCase();
-
-            if (['mp3', 'wav', 'ogg', 'mp4', 'webm', 'png', 'jpg', 'jpeg'].includes(ext)) {
-                monacoContainer.style.display = 'none';
-                mediaViewer.style.display = 'flex';
-                const fileUrl = `/api/raw?path=${encodeURIComponent(path)}&t=${Date.now()}`;
-
-                if (['mp3', 'wav', 'ogg'].includes(ext)) {
-                    mediaViewer.innerHTML = `
-                        <div style="font-size:40px; color:#4ec9b0;"><i class="fa-solid fa-music"></i></div>
-                        <h3 style="color:#fff;">${path}</h3>
-                        <audio controls src="${fileUrl}" autoplay style="margin-top:15px;"></audio>
-                    `;
-                } else if (['mp4', 'webm'].includes(ext)) {
-                    mediaViewer.innerHTML = `
-                        <video controls src="${fileUrl}" autoplay style="width:85%; max-height:80%;"></video>
-                        <span style="color:#888; font-size:12px;">${path}</span>
-                    `;
-                } else {
-                    mediaViewer.innerHTML = `<img src="${fileUrl}" alt="${path}" />`;
-                }
-            } else {
-                mediaViewer.style.display = 'none';
-                monacoContainer.style.display = 'block';
-
-                const res = await fetch(`/api/load?path=${encodeURIComponent(path)}`);
-                const content = await res.text();
-
-                const targetLang = langMap[ext] || 'plaintext';
-                const oldModel = editor.getModel();
-                if (oldModel) oldModel.dispose();
-                const newModel = monaco.editor.createModel(content, targetLang);
-                editor.setModel(newModel);
-            }
-
-            document.querySelectorAll('.tree-item').forEach(el => {
-                const span = el.querySelector('span');
-                if (span) el.classList.toggle('active', span.innerText === path);
-            });
-
-            executeUIRuntime();
+            const langs = { cs:'csharp', py:'python', go:'go', rs:'rust', js:'javascript', html:'html' };
+            const model = monaco.editor.createModel(content, langs[ext] || 'plaintext');
+            editor.setModel(model);
+            loadTree();
         }
 
-        function executeUIRuntime() {
-            const code = editor.getValue();
-            const ext = activePath.split('.').pop().toLowerCase();
-
-            if (ext === 'svg') {
-                previewTitle.innerHTML = '<i class="fa-solid fa-bezier-curve"></i> SVG Vector Preview';
-                previewFrame.srcdoc = `<html><body style="margin:0; display:flex; justify-content:center; align-items:center; height:100vh; background:#1e1e1e;">${code}</body></html>`;
-                return;
-            }
-            if (ext === 'html') {
-                previewTitle.innerHTML = '<i class="fa-brands fa-html5"></i> Web Preview';
-                previewFrame.srcdoc = code;
-                return;
-            }
-            if (ext === 'qml') {
-                previewTitle.innerHTML = '<i class="fa-solid fa-cubes"></i> Qt Quick Window';
-                previewFrame.srcdoc = `<!DOCTYPE html><html><head><style>body { margin:0; padding:20px; background:#2b2b2b; color:#fff; font-family:sans-serif; display:flex; flex-direction:column; align-items:center; justify-content:center; height:100vh; } .qt-btn { background:#4a4e52; color:#fff; border:1px solid #5a5e62; padding:8px 16px; border-radius:4px; cursor:pointer; font-weight:bold; }</style></head><body><div id="qt-root"></div><script>const qml = ${JSON.stringify(code)}; const state = {}; const pMatch = qml.match(/property\\s+int\\s+([a-zA-Z0-9_]+)\\s*:\\s*([0-9]+)/); if (pMatch) state[pMatch[1]] = parseInt(pMatch[2]); function render() { let html = '<div style="font-size:20px; font-weight:bold; margin-bottom:15px;">Qt QML Window</div>'; for (let k in state) { html += '<div style="font-size:18px; margin-bottom:10px;">Count: ' + state[k] + '</div>'; } html += '<button class="qt-btn" onclick="state.count++; render();">Qt PushButton (Click)</button>'; document.getElementById('qt-root').innerHTML = html; } render();<\/script></body></html>`;
-                return;
-            }
-            if (ext === 'swift') {
-                previewTitle.innerHTML = '<i class="fa-brands fa-apple"></i> SwiftUI Simulator';
-                previewFrame.srcdoc = `<!DOCTYPE html><html><head><script src="https://cdn.tailwindcss.com"></` + `script></head><body class="bg-gray-100 flex flex-col justify-center items-center h-screen"><div id="root" class="text-center"></div><script>let count = 0; function render() { document.getElementById('root').innerHTML = '<h2 class="text-xl font-bold mb-2">SwiftUI Native View</h2><div class="text-gray-600 mb-4 font-semibold">Count: ' + count + '</div><button onclick="count++; render();" class="px-6 py-2.5 bg-blue-600 text-white rounded-xl shadow active:scale-95 font-bold">Action Button</button>'; } render();<\/script></body></html>`;
-            }
-        }
-
-        document.getElementById('render-ui-btn').onclick = executeUIRuntime;
-        document.getElementById('toggle-preview-btn').onclick = () => {
-            const panel = document.getElementById('preview-panel');
-            panel.style.display = panel.style.display === 'none' ? 'flex' : 'none';
+        document.getElementById('btn-refresh').onclick = loadTree;
+        document.getElementById('btn-clear-term').onclick = () => termBody.innerText = "";
+        document.getElementById('btn-explorer').onclick = () => {
+            const el = document.getElementById('sidebar');
+            el.style.display = el.style.display === 'none' ? 'flex' : 'none';
+        };
+        document.getElementById('btn-agent').onclick = () => {
+            const el = document.getElementById('agent-panel');
+            el.style.display = el.style.display === 'none' ? 'flex' : 'none';
         };
 
-        cmdInput.onkeydown = async (e) => {
+        // ターミナル
+        document.getElementById('cmd-input').onkeydown = async (e) => {
             if (e.key === 'Enter') {
-                const cmd = cmdInput.value.trim();
+                const cmd = e.target.value.trim();
                 if (!cmd) return;
-                cmdInput.value = "";
-
-                terminalBody.innerText += `\nalpine:/workspace# ${cmd}\n`;
-                terminalBody.scrollTop = terminalBody.scrollHeight;
-
-                try {
-                    const res = await fetch('/api/cmd', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ cmd })
-                    });
-                    const out = await res.text();
-                    terminalBody.innerText += out;
-                    terminalBody.scrollTop = terminalBody.scrollHeight;
-                    loadTree();
-                } catch (err) {
-                    terminalBody.innerText += `Error: ${err}\n`;
-                }
+                e.target.value = "";
+                termBody.innerText += `\nalpine# ${cmd}\n`;
+                const res = await fetch('/api/cmd', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ cmd }) });
+                termBody.innerText += await res.text();
+                termBody.scrollTop = termBody.scrollHeight;
+                loadTree();
             }
         };
 
-        document.getElementById('clear-term').onclick = () => terminalBody.innerText = "// ターミナルをクリアしました";
+        // ★★★ 本物のIDE自動操縦エージェント (Agent Execution Engine) ★★★
+        document.getElementById('agent-send-btn').onclick = runAgent;
+        document.getElementById('agent-input').onkeydown = (e) => {
+            if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                e.preventDefault();
+                runAgent();
+            }
+        };
 
-        document.getElementById('sidebar-run-btn').onclick = async () => {
-            if (!activePath) return;
-            terminalBody.innerText += `\n[Building Project] ${activePath} ...\n-----------------------------------\n`;
-            await saveFile();
+        async function runAgent() {
+            const input = document.getElementById('agent-input');
+            const prompt = input.value.trim();
+            const model = document.getElementById('agent-model').value;
+            if (!prompt) return;
+
+            const msgBox = document.getElementById('agent-messages');
+            msgBox.innerHTML += `<div class="chat-user">${prompt}</div>`;
+            const aiMsg = document.createElement('div');
+            aiMsg.className = 'chat-ai';
+            aiMsg.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> IDE操作プランを思考中...';
+            msgBox.appendChild(aiMsg);
+            input.value = "";
+            msgBox.scrollTop = msgBox.scrollHeight;
+
+            const systemPrompt = `あなたはIDEを完全自動操作する自律エージェントです。
+ユーザーの指示を満たすために、以下のJSON形式のみを出力してください。前置きや解説は一切出力してはなりません。
+
+必ず以下のJSON配列フォーマットを守ってください:
+[
+  {"action": "create", "path": "ファイル名"},
+  {"action": "write", "path": "ファイル名", "content": "完全なソースコード"},
+  {"action": "cmd", "command": "実行するシェルコマンド (例: dotnet run など)"}
+]`;
 
             try {
-                const res = await fetch('/api/run', {
+                const res = await fetch('/api/ai', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ path: activePath })
+                    body: JSON.stringify({
+                        model: model,
+                        messages: [
+                            { role: "system", content: systemPrompt },
+                            { role: "user", content: prompt }
+                        ]
+                    })
                 });
-                const result = await res.text();
-                terminalBody.innerText += result + `\n-----------------------------------\n[Done]\n`;
-                terminalBody.scrollTop = terminalBody.scrollHeight;
+
+                const data = await res.json();
+                if (data.error) {
+                    aiMsg.innerHTML = `<span style="color:#e06c75;">エラー: ${data.error.message || JSON.stringify(data.error)}</span>`;
+                    return;
+                }
+
+                const rawText = data.choices[0].message.content;
+                const jsonMatch = rawText.match(/\[[\s\S]*\]/);
+                if (!jsonMatch) {
+                    aiMsg.innerHTML = `<div>プラン解析失敗。直接出力:</div><pre style="font-size:10px;">${rawText}</pre>`;
+                    return;
+                }
+
+                const actions = JSON.parse(jsonMatch[0]);
+                aiMsg.innerHTML = '<strong>🚀 IDE自動操縦を開始:</strong>';
+
+                for (const act of actions) {
+                    if (act.action === "create") {
+                        aiMsg.innerHTML += `<span class="action-log">📁 作成中: ${act.path}</span>`;
+                        await fetch('/api/create', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ path: act.path, isDir: false })
+                        });
+                        await loadTree();
+                    } else if (act.action === "write") {
+                        aiMsg.innerHTML += `<span class="action-log">✍ 書込中: ${act.path}</span>`;
+                        await fetch('/api/save', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ path: act.path, content: act.content })
+                        });
+                        await openFile(act.path);
+                    } else if (act.action === "cmd") {
+                        aiMsg.innerHTML += `<span class="action-log">⚡ 実行中: ${act.command}</span>`;
+                        termBody.innerText += `\n[Agent Exec] ${act.command}\n`;
+                        const cmdRes = await fetch('/api/cmd', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ cmd: act.command })
+                        });
+                        const cmdOut = await cmdRes.text();
+                        termBody.innerText += cmdOut + "\n";
+                        termBody.scrollTop = termBody.scrollHeight;
+                    }
+                    msgBox.scrollTop = msgBox.scrollHeight;
+                }
+
+                aiMsg.innerHTML += '<span class="action-log" style="color:#4ec9b0; font-weight:bold;">✔ 全操作が完了しました！</span>';
             } catch (err) {
-                terminalBody.innerText += `Build Error: ${err}\n`;
+                aiMsg.innerHTML = `<span style="color:#e06c75;">実行エラー: ${err}</span>`;
             }
-        };
-
-        // ★★★ ファイル作成バグ修正箇所 ★★★
-        const overlay = document.getElementById('modal-overlay');
-        const input = document.getElementById('quick-input');
-        const label = document.getElementById('quick-input-label');
-        const closeBtn = document.getElementById('quick-close-btn');
-        let currentAction = null;
-
-        function closeModal() {
-            overlay.style.display = 'none';
-            input.value = "";
-            currentAction = null;
         }
-
-        function showPrompt(title, onConfirm) {
-            label.innerText = title;
-            input.value = "";
-            overlay.style.display = 'block';
-            input.focus();
-            currentAction = onConfirm;
-        }
-
-        // Enterで確定（コールバックを退避してから閉じる）
-        input.onkeydown = (e) => {
-            if (e.key === 'Enter') {
-                const val = input.value.trim();
-                const action = currentAction; // ← ★ 退避！
-                closeModal();
-                if (val && action) {
-                    action(val); // ← ★ 確実に実行！
-                }
-            }
-        };
-
-        closeBtn.onclick = closeModal;
-
-        overlay.onclick = (e) => {
-            if (e.target === overlay) closeModal();
-        };
-
-        window.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape' && overlay.style.display === 'block') {
-                e.preventDefault();
-                closeModal();
-            }
-        });
-
-        // 新規ファイル作成ハンドラー
-        document.getElementById('new-file-btn').onclick = () => {
-            showPrompt("新規ファイル名を入力 (例: Program.cs, main.py)", async (name) => {
-                try {
-                    const res = await fetch('/api/create', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ path: name, isDir: false })
-                    });
-                    if (res.ok) {
-                        await loadTree();
-                        openFile(name);
-                    } else {
-                        const err = await res.text();
-                        alert("ファイル作成失敗: " + err);
-                    }
-                } catch(err) {
-                    alert("通信エラー: " + err);
-                }
-            });
-        };
-
-        // 新規フォルダ作成ハンドラー
-        document.getElementById('new-folder-btn').onclick = () => {
-            showPrompt("新規フォルダ名を入力", async (name) => {
-                try {
-                    const res = await fetch('/api/create', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ path: name, isDir: true })
-                    });
-                    if (res.ok) {
-                        await loadTree();
-                    } else {
-                        const err = await res.text();
-                        alert("フォルダ作成失敗: " + err);
-                    }
-                } catch(err) {
-                    alert("通信エラー: " + err);
-                }
-            });
-        };
-
-        document.getElementById('refresh-tree-btn').onclick = loadTree;
     </script>
 </body>
 </html>
