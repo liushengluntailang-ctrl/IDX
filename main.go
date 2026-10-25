@@ -1,8 +1,10 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"os/exec"
@@ -16,44 +18,8 @@ type FileItem struct {
 	IsDir bool   `json:"isDir"`
 }
 
-type SaveRequest struct {
-	Path    string `json:"path"`
-	Content string `json:"content"`
-}
-
-type CreateRequest struct {
-	Path  string `json:"path"`
-	IsDir bool   `json:"isDir"`
-}
-
-type ExecRequest struct {
-	Path string `json:"path"`
-}
-
-type CmdRequest struct {
-	Cmd string `json:"cmd"`
-}
-
-type DeleteRequest struct {
-	Path string `json:"path"`
-}
-
 func main() {
 	workspaceRoot := "/app/workspace"
-
-	svgSample := filepath.Join(workspaceRoot, "logo.svg")
-	if _, err := os.Stat(svgSample); os.IsNotExist(err) {
-		os.WriteFile(svgSample, []byte(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
-  <defs>
-    <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#007acc;stop-opacity:1" />
-      <stop offset="100%" style="stop-color:#4ec9b0;stop-opacity:1" />
-    </linearGradient>
-  </defs>
-  <circle cx="100" cy="100" r="80" fill="url(#grad)" />
-  <path d="M70 60 L140 100 L70 140 Z" fill="#ffffff" />
-</svg>`), 0644)
-	}
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/" {
@@ -63,6 +29,7 @@ func main() {
 		http.FileServer(http.Dir(".")).ServeHTTP(w, r)
 	})
 
+	// ファイル一覧
 	http.HandleFunc("/api/files", func(w http.ResponseWriter, r *http.Request) {
 		var list []FileItem
 		filepath.Walk(workspaceRoot, func(p string, info os.FileInfo, err error) error {
@@ -77,6 +44,7 @@ func main() {
 		json.NewEncoder(w).Encode(list)
 	})
 
+	// ファイル読込
 	http.HandleFunc("/api/load", func(w http.ResponseWriter, r *http.Request) {
 		path := filepath.Join(workspaceRoot, r.URL.Query().Get("path"))
 		data, err := os.ReadFile(path)
@@ -87,130 +55,80 @@ func main() {
 		w.Write(data)
 	})
 
-	http.HandleFunc("/api/raw", func(w http.ResponseWriter, r *http.Request) {
-		fullPath := filepath.Join(workspaceRoot, r.URL.Query().Get("path"))
-		http.ServeFile(w, r, fullPath)
-	})
-
+	// ファイル書込 / 保存
 	http.HandleFunc("/api/save", func(w http.ResponseWriter, r *http.Request) {
-		var req SaveRequest
+		var req struct{ Path, Content string }
 		json.NewDecoder(r.Body).Decode(&req)
 		fullPath := filepath.Join(workspaceRoot, req.Path)
+		os.MkdirAll(filepath.Dir(fullPath), 0755)
 		os.WriteFile(fullPath, []byte(req.Content), 0644)
 		w.Write([]byte("OK"))
 	})
 
-	// ★ エラーをしっかり返す安全なファイル作成処理
+	// ファイル作成
 	http.HandleFunc("/api/create", func(w http.ResponseWriter, r *http.Request) {
-		var req CreateRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			http.Error(w, "JSONデコードエラー: "+err.Error(), 400)
-			return
+		var req struct {
+			Path  string `json:"path"`
+			IsDir bool   `json:"isDir"`
 		}
-		cleanPath := strings.TrimSpace(req.Path)
-		if cleanPath == "" {
-			http.Error(w, "パスが空です", 400)
-			return
-		}
-		fullPath := filepath.Join(workspaceRoot, cleanPath)
-		if req.IsDir {
-			if err := os.MkdirAll(fullPath, 0755); err != nil {
-				http.Error(w, "フォルダ作成失敗: "+err.Error(), 500)
-				return
-			}
-		} else {
-			if err := os.MkdirAll(filepath.Dir(fullPath), 0755); err != nil {
-				http.Error(w, "親フォルダ作成失敗: "+err.Error(), 500)
-				return
-			}
-			if err := os.WriteFile(fullPath, []byte(""), 0644); err != nil {
-				http.Error(w, "ファイル作成失敗: "+err.Error(), 500)
-				return
-			}
-		}
-		w.Write([]byte("OK"))
-	})
-
-	http.HandleFunc("/api/delete", func(w http.ResponseWriter, r *http.Request) {
-		var req DeleteRequest
 		json.NewDecoder(r.Body).Decode(&req)
-		fullPath := filepath.Join(workspaceRoot, req.Path)
-		err := os.RemoveAll(fullPath)
-		if err != nil {
-			http.Error(w, err.Error(), 500)
-			return
+		fullPath := filepath.Join(workspaceRoot, strings.TrimSpace(req.Path))
+		if req.IsDir {
+			os.MkdirAll(fullPath, 0755)
+		} else {
+			os.MkdirAll(filepath.Dir(fullPath), 0755)
+			os.WriteFile(fullPath, []byte(""), 0644)
 		}
 		w.Write([]byte("OK"))
 	})
 
+	// 削除
+	http.HandleFunc("/api/delete", func(w http.ResponseWriter, r *http.Request) {
+		var req struct{ Path string }
+		json.NewDecoder(r.Body).Decode(&req)
+		os.RemoveAll(filepath.Join(workspaceRoot, req.Path))
+		w.Write([]byte("OK"))
+	})
+
+	// ターミナルコマンド実行
 	http.HandleFunc("/api/cmd", func(w http.ResponseWriter, r *http.Request) {
-		var req CmdRequest
+		var req struct{ Cmd string }
 		json.NewDecoder(r.Body).Decode(&req)
 		cmd := exec.Command("sh", "-c", fmt.Sprintf("cd %s && %s", workspaceRoot, req.Cmd))
 		out, err := cmd.CombinedOutput()
 		if err != nil && len(out) == 0 {
-			fmt.Fprintf(w, "Command error: %v", err)
+			fmt.Fprintf(w, "Error: %v", err)
 			return
 		}
 		w.Write(out)
 	})
 
-	http.HandleFunc("/api/run", func(w http.ResponseWriter, r *http.Request) {
-		var req ExecRequest
-		json.NewDecoder(r.Body).Decode(&req)
-		fullPath := filepath.Join(workspaceRoot, req.Path)
-		dir := filepath.Dir(fullPath)
-		ext := strings.ToLower(filepath.Ext(fullPath))
-
-		var cmd *exec.Cmd
-
-		switch ext {
-		case ".cs":
-			cmd = exec.Command("sh", "-c", fmt.Sprintf(`
-				cd '%s'
-				if [ -f *.csproj ]; then
-					dotnet run
-				else
-					cp *.cs /app/csharp_env/ 2>/dev/null || true
-					cd /app/csharp_env && dotnet run
-				fi
-			`, dir))
-		case ".rs":
-			cmd = exec.Command("sh", "-c", fmt.Sprintf(`
-				cd '%s'
-				if [ -f Cargo.toml ]; then
-					cargo run
-				else
-					rustc *.rs -o /tmp/rust_app && /tmp/rust_app
-				fi
-			`, dir))
-		case ".go":
-			cmd = exec.Command("sh", "-c", fmt.Sprintf("cd '%s' && go run .", dir))
-		case ".cpp", ".c":
-			cmd = exec.Command("sh", "-c", fmt.Sprintf("cd '%s' && g++ *.cpp *.c -o /tmp/native_app 2>/dev/null || g++ '%s' -o /tmp/native_app && /tmp/native_app", dir, fullPath))
-		case ".py":
-			cmd = exec.Command("sh", "-c", fmt.Sprintf("cd '%s' && python3 '%s'", dir, fullPath))
-		case ".js", ".ts":
-			cmd = exec.Command("sh", "-c", fmt.Sprintf("cd '%s' && node '%s'", dir, fullPath))
-		case ".sh":
-			cmd = exec.Command("sh", "-c", fmt.Sprintf("cd '%s' && sh '%s'", dir, fullPath))
-		default:
-			fmt.Fprintf(w, "実行対象外のファイルです: %s", ext)
+	// AIエージェントAPI中継 (OpenRouterキーをサーバー内環境変数から使用)
+	http.HandleFunc("/api/ai", func(w http.ResponseWriter, r *http.Request) {
+		apiKey := os.Getenv("OPENROUTER_API_KEY")
+		if apiKey == "" {
+			http.Error(w, "RenderのEnvironmentにOPENROUTER_API_KEYを設定してください", 400)
 			return
 		}
+		body, _ := io.ReadAll(r.Body)
+		aiReq, _ := http.NewRequest("POST", "https://openrouter.ai/api/v1/chat/completions", bytes.NewBuffer(body))
+		aiReq.Header.Set("Authorization", "Bearer "+apiKey)
+		aiReq.Header.Set("Content-Type", "application/json")
+		aiReq.Header.Set("HTTP-Referer", "https://github.com/liushengluntailang-ctrl/IDX")
 
-		out, err := cmd.CombinedOutput()
+		resp, err := (&http.Client{}).Do(aiReq)
 		if err != nil {
-			fmt.Fprintf(w, "%s\n[ビルド/実行エラー]", string(out))
+			http.Error(w, err.Error(), 500)
 			return
 		}
-		w.Write(out)
+		defer resp.Body.Close()
+		io.Copy(w, resp.Body)
 	})
 
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "10000"
 	}
-	fmt.Println("Custom Project IDX Server is running on :" + port)
+	fmt.Println("Server running on :" + port)
 	http.ListenAndServe(":"+port, nil)
 }
