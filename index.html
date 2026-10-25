@@ -9,122 +9,112 @@
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { display: flex; height: 100vh; background: #1e1e1e; color: #ccc; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; overflow: hidden; }
         
-        /* 1. 左端のアクティビティバー (VS Code再現) */
-        #activity-bar { width: 48px; min-width: 48px; background: #333; display: flex; flex-direction: column; align-items: center; padding-top: 5px; border-right: 1px solid #252525; z-index: 10; }
+        /* 1. 左端：Activity Bar */
+        #activity-bar { width: 48px; min-width: 48px; background: #333; display: flex; flex-direction: column; align-items: center; padding-top: 5px; border-right: 1px solid #252525; }
         .act-btn { width: 48px; height: 48px; display: flex; justify-content: center; align-items: center; color: #858585; cursor: pointer; font-size: 19px; transition: 0.15s; }
         .act-btn:hover { color: #fff; }
         .act-btn.active { color: #fff; border-left: 2px solid #007acc; }
-        .act-btn.ai-btn.active { border-left-color: #c678dd; color: #c678dd; }
+        .act-btn.ai-btn { color: #c678dd; }
 
-        /* 2. 統合サイドバー (切り替え式・折りたたみ可能) */
-        #sidebar-container { width: 280px; min-width: 280px; background: #252526; display: flex; flex-direction: column; border-right: 1px solid #191919; }
-        
-        /* Explorerビュー */
-        #explorer-view { display: flex; flex-direction: column; height: 100%; }
+        /* 2. 左側：Explorer専用サイドバー */
+        #sidebar { width: 240px; min-width: 240px; background: #252526; display: flex; flex-direction: column; border-right: 1px solid #191919; }
         .sidebar-header { padding: 10px 15px; font-size: 11px; font-weight: bold; text-transform: uppercase; color: #bbb; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333; }
-        .sidebar-actions i { margin-left: 10px; cursor: pointer; }
-        .sidebar-actions i:hover { color: #fff; }
         #file-tree { flex: 1; overflow-y: auto; list-style: none; padding-top: 5px; }
         .tree-item { padding: 5px 15px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-size: 13px; }
         .tree-item:hover { background: #2a2d2e; }
         .tree-item.active { background: #37373d; color: #fff; border-left: 2px solid #007acc; }
         .tree-item .del { display: none; color: #e06c75; font-size: 12px; }
         .tree-item:hover .del { display: block; }
-        .tree-item .del:hover { color: #ff3344; }
 
-        /* AI Agentビュー */
-        #agent-view { display: none; flex-direction: column; height: 100%; background: #21252b; }
-        #agent-settings { padding: 10px; background: #1e2227; border-bottom: 1px solid #181a1f; display: flex; flex-direction: column; gap: 4px; font-size: 11px; }
-        #agent-model { width: 100%; background: #282c34; border: 1px solid #3e4451; color: #fff; padding: 5px; border-radius: 3px; font-size: 11px; outline: none; }
-        #agent-messages { flex: 1; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 10px; font-size: 12px; }
-        .chat-bubble { padding: 8px 12px; border-radius: 6px; line-height: 1.4; word-break: break-word; }
-        .chat-user { background: #3e4451; color: #fff; align-self: flex-end; max-width: 85%; }
-        .chat-ai { background: #282c34; border: 1px solid #3e4451; color: #abb2bf; align-self: flex-start; max-width: 95%; }
-        .action-log { color: #98c379; font-family: monospace; font-size: 11px; margin-top: 4px; display: block; }
-        #agent-input-area { padding: 10px; background: #282c34; border-top: 1px solid #181a1f; display: flex; flex-direction: column; gap: 8px; }
-        #agent-input { width: 100%; height: 70px; background: #1e2227; border: 1px solid #3e4451; color: #fff; padding: 8px; font-size: 12px; border-radius: 4px; resize: none; outline: none; }
-        #agent-send-btn { background: #c678dd; color: #fff; border: none; padding: 8px; font-size: 12px; font-weight: bold; border-radius: 4px; cursor: pointer; transition: 0.2s; }
-        #agent-send-btn:hover { background: #d896ea; }
-
-        /* 3. メインエディタ領域 */
+        /* 3. 中央：メインエディタ ＆ 下部ターミナル */
         #workspace-area { flex: 1; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
-        #tabs-bar { height: 35px; background: #252526; display: flex; align-items: center; justify-content: space-between; padding-right: 10px; border-bottom: 1px solid #1e1e1e; }
-        .tab { height: 100%; padding: 0 16px; background: #1e1e1e; color: #fff; display: flex; align-items: center; gap: 8px; font-size: 13px; border-top: 2px solid #007acc; }
+        #tabs-bar { height: 35px; background: #252526; display: flex; align-items: center; padding: 0 12px; border-bottom: 1px solid #1e1e1e; font-size: 13px; color: #fff; }
         #monaco-editor { flex: 1; }
-
-        /* 4. 下部ターミナル */
         #terminal-panel { height: 180px; background: #141414; border-top: 1px solid #333; display: flex; flex-direction: column; font-family: "Consolas", monospace; }
         #terminal-header { height: 26px; background: #1e1e1e; display: flex; align-items: center; justify-content: space-between; padding: 0 12px; font-size: 11px; font-weight: bold; color: #aaa; border-bottom: 1px solid #2a2a2a; }
         #terminal-body { flex: 1; padding: 8px 12px; overflow-y: auto; font-size: 12px; color: #d4d4d4; white-space: pre-wrap; }
         #terminal-input-line { display: flex; align-items: center; background: #181818; padding: 4px 10px; border-top: 1px solid #282828; }
         #cmd-input { flex: 1; background: transparent; border: none; color: #fff; font-family: inherit; font-size: 12px; outline: none; margin-left: 6px; }
+
+        /* 4. ★ 右側：AI Copilot パネル (本家配置) */
+        #copilot-panel { width: 330px; min-width: 330px; background: #21252b; border-left: 1px solid #181a1f; display: flex; flex-direction: column; }
+        #copilot-header { padding: 10px 15px; background: #282c34; border-bottom: 1px solid #181a1f; font-size: 12px; font-weight: bold; color: #c678dd; display: flex; justify-content: space-between; align-items: center; }
+        #copilot-settings { padding: 10px; background: #1e2227; border-bottom: 1px solid #181a1f; display: flex; flex-direction: column; gap: 8px; font-size: 11px; }
+        #copilot-settings select { width: 100%; background: #282c34; border: 1px solid #3e4451; color: #fff; padding: 5px; border-radius: 3px; font-size: 11px; outline: none; }
+        .setting-checkbox { display: flex; align-items: center; gap: 6px; color: #aaa; cursor: pointer; }
+        #copilot-messages { flex: 1; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 10px; font-size: 12px; }
+        .chat-bubble { padding: 8px 12px; border-radius: 6px; line-height: 1.4; word-break: break-word; }
+        .chat-user { background: #3e4451; color: #fff; align-self: flex-end; max-width: 85%; }
+        .chat-ai { background: #282c34; border: 1px solid #3e4451; color: #abb2bf; align-self: flex-start; max-width: 95%; }
+        .action-log { color: #98c379; font-family: monospace; font-size: 11px; margin-top: 4px; display: block; }
+        #copilot-input-area { padding: 10px; background: #282c34; border-top: 1px solid #181a1f; display: flex; flex-direction: column; gap: 8px; }
+        #copilot-input { width: 100%; height: 65px; background: #1e2227; border: 1px solid #3e4451; color: #fff; padding: 8px; font-size: 12px; border-radius: 4px; resize: none; outline: none; }
+        #copilot-send-btn { background: #c678dd; color: #fff; border: none; padding: 7px; font-size: 12px; font-weight: bold; border-radius: 4px; cursor: pointer; transition: 0.2s; }
+        #copilot-send-btn:hover { background: #d896ea; }
     </style>
 </head>
 <body>
 
-    <!-- 1. Activity Bar -->
+    <!-- 1. Activity Bar (左端) -->
     <div id="activity-bar">
         <div class="act-btn active" id="btn-toggle-explorer" title="Explorer (ファイル一覧)"><i class="fa-regular fa-copy"></i></div>
-        <div class="act-btn ai-btn" id="btn-toggle-agent" title="AI Agent (自動操縦)"><i class="fa-solid fa-wand-magic-sparkles"></i></div>
+        <div class="act-btn ai-btn" id="btn-toggle-copilot" title="AI Copilot (右側パネル開閉)"><i class="fa-solid fa-wand-magic-sparkles"></i></div>
     </div>
 
-    <!-- 2. サイドバー (切り替え ＆ 折りたたみ式) -->
-    <div id="sidebar-container">
-        <!-- Explorer View -->
-        <div id="explorer-view">
-            <div class="sidebar-header">
-                <span>EXPLORER</span>
-                <div class="sidebar-actions">
-                    <i class="fa-solid fa-file-circle-plus" id="btn-new-file" title="新規ファイル"></i>
-                    <i class="fa-solid fa-rotate" id="btn-refresh" title="更新"></i>
-                </div>
-            </div>
-            <ul id="file-tree"></ul>
-        </div>
-
-        <!-- AI Agent View -->
-        <div id="agent-view">
-            <div class="sidebar-header" style="color:#c678dd;">
-                <span><i class="fa-solid fa-robot"></i> IDE AUTO-AGENT</span>
-            </div>
-            <div id="agent-settings">
-                <label style="color:#888;">AI Model:</label>
-                <select id="agent-model">
-                    <option value="qwen/qwen-2.5-coder-32b-instruct:free" selected>Qwen 2.5 Coder (最強)</option>
-                    <option value="deepseek/deepseek-r1:free">DeepSeek R1 (推論・デバッグ)</option>
-                    <option value="meta-llama/llama-3.3-70b-instruct:free">Llama 3.3 70B (超安定)</option>
-                    <option value="mistralai/mistral-nemo:free">Mistral Nemo (爆速)</option>
-                </select>
-            </div>
-            <div id="agent-messages">
-                <div class="chat-bubble chat-ai">指示を入力すると、ファイル作成・コード記述・ビルド実行まで**IDEを自動操作**します。</div>
-            </div>
-            <div id="agent-input-area">
-                <textarea id="agent-input" placeholder="例: C#で数当てゲームを作って動かして (Ctrl+Enterで送信)"></textarea>
-                <button id="agent-send-btn"><i class="fa-solid fa-bolt"></i> 自動操縦でアプリ作成</button>
+    <!-- 2. 左サイドバー (Explorer専用) -->
+    <div id="sidebar">
+        <div class="sidebar-header">
+            <span>EXPLORER</span>
+            <div>
+                <i class="fa-solid fa-file-circle-plus" id="btn-new-file" style="cursor:pointer;" title="新規ファイル"></i>
+                <i class="fa-solid fa-rotate" id="btn-refresh" style="cursor:pointer; margin-left:8px;" title="更新"></i>
             </div>
         </div>
+        <ul id="file-tree"></ul>
     </div>
 
-    <!-- 3. メインエディタ領域 -->
+    <!-- 3. 中央：メインエディタ ＆ ターミナル -->
     <div id="workspace-area">
-        <div id="tabs-bar">
-            <div class="tab">
-                <i class="fa-solid fa-code"></i>
-                <span id="tab-filename">読み込み中...</span>
-            </div>
-        </div>
+        <div id="tabs-bar"><span id="tab-filename">ファイルを選択してください</span></div>
         <div id="monaco-editor"></div>
         <div id="terminal-panel">
             <div id="terminal-header">
-                <span>TERMINAL</span>
-                <span id="btn-clear-term" style="cursor:pointer;" title="クリア"><i class="fa-solid fa-ban"></i></span>
+                <span>TERMINAL (「copilot 指示」でAIに直接命令可能)</span>
+                <span id="btn-clear-term" style="cursor:pointer;"><i class="fa-solid fa-ban"></i></span>
             </div>
-            <div id="terminal-body">// ターミナル準備完了</div>
+            <div id="terminal-body">// ターミナル準備完了。「copilot C#で電卓作って」のように直接AIを呼び出せます。</div>
             <div id="terminal-input-line">
                 <span style="color:#4ec9b0; font-weight:bold;">alpine#</span>
-                <input type="text" id="cmd-input" placeholder="手動コマンド入力..." autocomplete="off" />
+                <input type="text" id="cmd-input" placeholder="ls -la, dotnet run, または copilot [指示]..." autocomplete="off" />
             </div>
+        </div>
+    </div>
+
+    <!-- 4. ★ 右側：AI Copilot パネル (標準位置) -->
+    <div id="copilot-panel">
+        <div id="copilot-header">
+            <span><i class="fa-solid fa-robot"></i> COPILOT AGENT</span>
+            <i class="fa-solid fa-xmark" id="btn-close-copilot" style="cursor:pointer;" title="閉じる"></i>
+        </div>
+        <div id="copilot-settings">
+            <select id="agent-model">
+                <option value="qwen/qwen-2.5-coder-32b-instruct:free" selected>Qwen 2.5 Coder (最強)</option>
+                <option value="deepseek/deepseek-r1:free">DeepSeek R1 (推論・デバッグ)</option>
+                <option value="meta-llama/llama-3.3-70b-instruct:free">Llama 3.3 70B (超安定)</option>
+                <option value="mistralai/mistral-nemo:free">Mistral Nemo (爆速)</option>
+            </select>
+            <!-- ★ 設定：コマンド自動実行の許可スイッチ -->
+            <label class="setting-checkbox">
+                <input type="checkbox" id="allow-cmd-exec" checked />
+                <span>コマンドの自動実行を許可する</span>
+            </label>
+        </div>
+        <div id="copilot-messages">
+            <div class="chat-bubble chat-ai">右側のCopilotへようこそ！指示を出すとファイル作成からビルドまで自動操作します。</div>
+        </div>
+        <div id="copilot-input-area">
+            <textarea id="copilot-input" placeholder="例: C#で数当てゲームを作って動かして (Ctrl+Enterで送信)"></textarea>
+            <button id="copilot-send-btn"><i class="fa-solid fa-bolt"></i> 自動操縦で実行</button>
         </div>
     </div>
 
@@ -132,63 +122,40 @@
     <script>
         let editor, activePath = "";
         const termBody = document.getElementById("terminal-body");
-
-        // ★★★ サイドバーの切り替え ＆ 完全折りたたみ制御 ★★★
-        const sidebar = document.getElementById('sidebar-container');
-        const explorerView = document.getElementById('explorer-view');
-        const agentView = document.getElementById('agent-view');
+        const sidebar = document.getElementById('sidebar');
+        const copilotPanel = document.getElementById('copilot-panel');
         const btnExplorer = document.getElementById('btn-toggle-explorer');
-        const btnAgent = document.getElementById('btn-toggle-agent');
-        let currentTab = "explorer";
+        const btnCopilot = document.getElementById('btn-toggle-copilot');
 
-        function switchSidebar(tab) {
-            if (currentTab === tab && sidebar.style.display !== 'none') {
-                // 同じアイコンを押したら折りたたむ（エディタ全画面化）
-                sidebar.style.display = 'none';
-                btnExplorer.classList.remove('active');
-                btnAgent.classList.remove('active');
-                return;
-            }
+        // 開閉トグル
+        btnExplorer.onclick = () => {
+            const isHidden = sidebar.style.display === 'none';
+            sidebar.style.display = isHidden ? 'flex' : 'none';
+            btnExplorer.classList.toggle('active', isHidden);
+            if (editor) editor.layout();
+        };
 
-            sidebar.style.display = 'flex';
-            currentTab = tab;
-
-            if (tab === 'explorer') {
-                explorerView.style.display = 'flex';
-                agentView.style.display = 'none';
-                btnExplorer.classList.add('active');
-                btnAgent.classList.remove('active');
-            } else {
-                explorerView.style.display = 'none';
-                agentView.style.display = 'flex';
-                btnAgent.classList.add('active');
-                btnExplorer.classList.remove('active');
-            }
+        function toggleCopilot(forceOpen = false) {
+            const isHidden = copilotPanel.style.display === 'none';
+            const shouldOpen = forceOpen ? true : isHidden;
+            copilotPanel.style.display = shouldOpen ? 'flex' : 'none';
+            btnCopilot.classList.toggle('active', shouldOpen);
             if (editor) editor.layout();
         }
+        btnCopilot.onclick = () => toggleCopilot();
+        document.getElementById('btn-close-copilot').onclick = () => toggleCopilot(false);
 
-        btnExplorer.onclick = () => switchSidebar('explorer');
-        btnAgent.onclick = () => switchSidebar('agent');
-
-        // Monaco Editor 初期化
         require.config({ paths: { vs: 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs' } });
         require(['vs/editor/editor.main'], function () {
             editor = monaco.editor.create(document.getElementById('monaco-editor'), {
-                value: '// ファイルを開いてください',
+                value: '// IDE Ready',
                 language: 'plaintext',
                 theme: 'vs-dark',
                 automaticLayout: true,
                 fontSize: 14
             });
-
-            let saveTimer;
-            editor.onDidChangeModelContent(() => {
-                if (!activePath) return;
-                clearTimeout(saveTimer);
-                saveTimer = setTimeout(saveFile, 500);
-            });
-
-            loadTree(true); // 初回起動
+            editor.onDidChangeModelContent(() => { if (activePath) setTimeout(saveFile, 500); });
+            loadTree(true);
         });
 
         async function saveFile() {
@@ -200,7 +167,6 @@
             });
         }
 
-        // ファイルツリーの読み込み
         async function loadTree(openFirst = false) {
             try {
                 const res = await fetch('/api/files');
@@ -217,7 +183,7 @@
                     li.onclick = () => openFile(f.path);
                     li.querySelector('.del').onclick = async (e) => {
                         e.stopPropagation();
-                        if (confirm(`本当に "${f.path}" を削除しますか？`)) {
+                        if (confirm(`削除: ${f.path}?`)) {
                             await fetch('/api/delete', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ path: f.path }) });
                             loadTree();
                         }
@@ -225,25 +191,19 @@
                     tree.appendChild(li);
                 });
 
-                // ★ 初回起動時：Program.cs か最初のファイルを確実に開く
                 if (openFirst && !activePath && files.length > 0) {
                     const target = files.find(f => f.name === 'Program.cs') || files[0];
                     openFile(target.path);
                 }
-            } catch(e) {
-                console.error(e);
-            }
+            } catch(e) { console.error(e); }
         }
 
-        // ★ ファイルの中身を確実に読み込む
         async function openFile(path) {
             activePath = path;
             document.getElementById('tab-filename').innerText = path;
-            
             try {
                 const res = await fetch(`/api/load?path=${encodeURIComponent(path)}`);
                 const content = await res.text();
-                
                 const ext = path.split('.').pop().toLowerCase();
                 const langs = { cs:'csharp', py:'python', go:'go', rs:'rust', js:'javascript', html:'html', svg:'xml', xml:'xml' };
                 
@@ -251,9 +211,7 @@
                 if (oldModel) oldModel.dispose();
                 const newModel = monaco.editor.createModel(content, langs[ext] || 'plaintext');
                 editor.setModel(newModel);
-            } catch(e) {
-                console.error("ファイル読み込みエラー:", e);
-            }
+            } catch(e) { console.error(e); }
 
             document.querySelectorAll('.tree-item').forEach(el => {
                 const span = el.querySelector('span');
@@ -269,56 +227,68 @@
                 openFile(name);
             }
         };
-
         document.getElementById('btn-refresh').onclick = () => loadTree();
         document.getElementById('btn-clear-term').onclick = () => termBody.innerText = "";
 
-        // 手動ターミナル
+        // ★ 2. ターミナル入力（「copilot 指示」コマンド対応）
         document.getElementById('cmd-input').onkeydown = async (e) => {
             if (e.key === 'Enter') {
-                const cmd = e.target.value.trim();
-                if (!cmd) return;
+                const inputVal = e.target.value.trim();
+                if (!inputVal) return;
                 e.target.value = "";
-                termBody.innerText += `\nalpine# ${cmd}\n`;
-                const res = await fetch('/api/cmd', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ cmd }) });
+
+                // 「copilot 〜」でAIエージェントを直接呼び出す
+                if (inputVal.startsWith("copilot ") || inputVal.startsWith("copilot:")) {
+                    const prompt = inputVal.replace(/^copilot[:\s]+/, "");
+                    termBody.innerText += `\nalpine# ${inputVal}\n[Copilot] 指示を受信しました: "${prompt}"\n`;
+                    toggleCopilot(true); // 右パネルを開く
+                    runAgent(prompt);
+                    return;
+                }
+
+                // 通常のシェルコマンド実行
+                termBody.innerText += `\nalpine# ${inputVal}\n`;
+                const res = await fetch('/api/cmd', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ cmd: inputVal }) });
                 termBody.innerText += await res.text();
                 termBody.scrollTop = termBody.scrollHeight;
                 loadTree();
             }
         };
 
-        // ★★★ AI IDE自動操縦エージェント実行 ★★★
-        document.getElementById('agent-send-btn').onclick = runAgent;
-        document.getElementById('agent-input').onkeydown = (e) => {
+        // ★ 3. AI Agent実行（自動コマンド実行の許可判定つき）
+        document.getElementById('copilot-send-btn').onclick = () => {
+            const prompt = document.getElementById('copilot-input').value.trim();
+            if (prompt) runAgent(prompt);
+        };
+        document.getElementById('copilot-input').onkeydown = (e) => {
             if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
                 e.preventDefault();
-                runAgent();
+                const prompt = document.getElementById('copilot-input').value.trim();
+                if (prompt) runAgent(prompt);
             }
         };
 
-        async function runAgent() {
-            const input = document.getElementById('agent-input');
-            const prompt = input.value.trim();
+        async function runAgent(prompt) {
             const model = document.getElementById('agent-model').value;
-            if (!prompt) return;
+            const allowCmd = document.getElementById('allow-cmd-exec').checked; // ★ 設定：コマンド実行許可
 
-            const msgBox = document.getElementById('agent-messages');
+            const msgBox = document.getElementById('copilot-messages');
             msgBox.innerHTML += `<div class="chat-bubble chat-user">${prompt}</div>`;
             const aiMsg = document.createElement('div');
             aiMsg.className = 'chat-bubble chat-ai';
-            aiMsg.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> IDE自動操作プランを考案中...';
+            aiMsg.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> プラン考案中...';
             msgBox.appendChild(aiMsg);
-            input.value = "";
+            document.getElementById('copilot-input').value = "";
             msgBox.scrollTop = msgBox.scrollHeight;
 
-            const systemPrompt = `あなたはIDEを完全自動操作する自律エージェントです。
-ユーザーの指示を満たすために、以下のJSON形式のみを出力してください。前置きや解説は一切出力してはなりません。
+            const systemPrompt = `あなたはIDEを自動操作する自律エージェントです。
+ユーザーの指示を満たすため、必ず以下のJSON配列のみを出力してください。解説・前置きは一切出力してはなりません。
 
-必ず以下のJSON配列フォーマットを守ってください:
+フォーマット:
 [
   {"action": "create", "path": "ファイル名"},
   {"action": "write", "path": "ファイル名", "content": "完全なソースコード"},
-  {"action": "cmd", "command": "実行するシェルコマンド (例: dotnet run など)"}
+  {"action": "cmd", "command": "実行コマンド (例: dotnet run)"}
 ]`;
 
             try {
@@ -348,7 +318,7 @@
                 }
 
                 const actions = JSON.parse(jsonMatch[0]);
-                aiMsg.innerHTML = '<strong>🚀 IDE自動操作を実行中:</strong>';
+                aiMsg.innerHTML = '<strong>🚀 操作実行中:</strong>';
 
                 for (const act of actions) {
                     if (act.action === "create") {
@@ -360,16 +330,21 @@
                         await fetch('/api/save', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ path: act.path, content: act.content }) });
                         await openFile(act.path);
                     } else if (act.action === "cmd") {
-                        aiMsg.innerHTML += `<span class="action-log">⚡ コマンド実行: ${act.command}</span>`;
-                        termBody.innerText += `\n[Agent Exec] ${act.command}\n`;
-                        const cmdRes = await fetch('/api/cmd', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ cmd: act.command }) });
-                        termBody.innerText += await cmdRes.text() + "\n";
-                        termBody.scrollTop = termBody.scrollHeight;
+                        // ★ 設定でコマンド実行が許可されているか判定
+                        if (allowCmd) {
+                            aiMsg.innerHTML += `<span class="action-log">⚡ 実行: ${act.command}</span>`;
+                            termBody.innerText += `\n[Agent Exec] ${act.command}\n`;
+                            const cmdRes = await fetch('/api/cmd', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ cmd: act.command }) });
+                            termBody.innerText += await cmdRes.text() + "\n";
+                            termBody.scrollTop = termBody.scrollHeight;
+                        } else {
+                            aiMsg.innerHTML += `<span class="action-log" style="color:#e5c07b;">⚠ スキップ (設定によりコマンド実行不許可): ${act.command}</span>`;
+                        }
                     }
                     msgBox.scrollTop = msgBox.scrollHeight;
                 }
 
-                aiMsg.innerHTML += '<span class="action-log" style="color:#4ec9b0; font-weight:bold;">✔ すべての自動操作が完了しました！</span>';
+                aiMsg.innerHTML += '<span class="action-log" style="color:#4ec9b0; font-weight:bold;">✔ 完了しました！</span>';
             } catch (err) {
                 aiMsg.innerHTML = `<span style="color:#e06c75;">通信エラー: ${err}</span>`;
             }
