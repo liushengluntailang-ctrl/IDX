@@ -2,84 +2,127 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>Alpine Custom Project IDX - Agent Edition</title>
+    <title>Alpine Custom Project IDX</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs/editor/editor.main.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { display: flex; height: 100vh; background: #1e1e1e; color: #ccc; font-family: sans-serif; overflow: hidden; }
-        #activity-bar { width: 48px; background: #333; display: flex; flex-direction: column; align-items: center; padding-top: 10px; border-right: 1px solid #222; }
-        .act-btn { width: 48px; height: 48px; display: flex; justify-content: center; align-items: center; color: #888; cursor: pointer; font-size: 18px; }
-        .act-btn:hover, .act-btn.active { color: #fff; }
-        .act-btn.ai-btn { color: #c678dd; }
-        #sidebar { width: 220px; background: #252526; display: flex; flex-direction: column; border-right: 1px solid #191919; }
-        #sidebar-header { padding: 10px; font-size: 11px; font-weight: bold; color: #aaa; display: flex; justify-content: space-between; border-bottom: 1px solid #333; }
-        #file-tree { flex: 1; overflow-y: auto; list-style: none; }
-        .tree-item { padding: 5px 12px; cursor: pointer; display: flex; justify-content: space-between; font-size: 13px; }
+        body { display: flex; height: 100vh; background: #1e1e1e; color: #ccc; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; overflow: hidden; }
+        
+        /* 1. 左端のアクティビティバー (VS Code再現) */
+        #activity-bar { width: 48px; min-width: 48px; background: #333; display: flex; flex-direction: column; align-items: center; padding-top: 5px; border-right: 1px solid #252525; z-index: 10; }
+        .act-btn { width: 48px; height: 48px; display: flex; justify-content: center; align-items: center; color: #858585; cursor: pointer; font-size: 19px; transition: 0.15s; }
+        .act-btn:hover { color: #fff; }
+        .act-btn.active { color: #fff; border-left: 2px solid #007acc; }
+        .act-btn.ai-btn.active { border-left-color: #c678dd; color: #c678dd; }
+
+        /* 2. 統合サイドバー (切り替え式・折りたたみ可能) */
+        #sidebar-container { width: 280px; min-width: 280px; background: #252526; display: flex; flex-direction: column; border-right: 1px solid #191919; }
+        
+        /* Explorerビュー */
+        #explorer-view { display: flex; flex-direction: column; height: 100%; }
+        .sidebar-header { padding: 10px 15px; font-size: 11px; font-weight: bold; text-transform: uppercase; color: #bbb; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333; }
+        .sidebar-actions i { margin-left: 10px; cursor: pointer; }
+        .sidebar-actions i:hover { color: #fff; }
+        #file-tree { flex: 1; overflow-y: auto; list-style: none; padding-top: 5px; }
+        .tree-item { padding: 5px 15px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-size: 13px; }
         .tree-item:hover { background: #2a2d2e; }
         .tree-item.active { background: #37373d; color: #fff; border-left: 2px solid #007acc; }
-        .tree-item .del { display: none; color: #e06c75; }
+        .tree-item .del { display: none; color: #e06c75; font-size: 12px; }
         .tree-item:hover .del { display: block; }
-        #agent-panel { width: 320px; background: #21252b; border-right: 1px solid #181a1f; display: flex; flex-direction: column; }
-        #agent-header { padding: 10px; background: #282c34; font-size: 12px; font-weight: bold; color: #c678dd; display: flex; justify-content: space-between; }
-        #agent-settings { padding: 8px 10px; background: #1e2227; border-bottom: 1px solid #181a1f; }
-        #agent-model { width: 100%; background: #282c34; border: 1px solid #3e4451; color: #fff; padding: 4px; border-radius: 3px; font-size: 11px; }
-        #agent-messages { flex: 1; overflow-y: auto; padding: 10px; display: flex; flex-direction: column; gap: 8px; font-size: 12px; }
-        .chat-user { background: #3e4451; color: #fff; padding: 6px 10px; border-radius: 6px; align-self: flex-end; max-width: 90%; }
-        .chat-ai { background: #282c34; border: 1px solid #3e4451; color: #abb2bf; padding: 6px 10px; border-radius: 6px; align-self: flex-start; max-width: 95%; line-height: 1.4; }
+        .tree-item .del:hover { color: #ff3344; }
+
+        /* AI Agentビュー */
+        #agent-view { display: none; flex-direction: column; height: 100%; background: #21252b; }
+        #agent-settings { padding: 10px; background: #1e2227; border-bottom: 1px solid #181a1f; display: flex; flex-direction: column; gap: 4px; font-size: 11px; }
+        #agent-model { width: 100%; background: #282c34; border: 1px solid #3e4451; color: #fff; padding: 5px; border-radius: 3px; font-size: 11px; outline: none; }
+        #agent-messages { flex: 1; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 10px; font-size: 12px; }
+        .chat-bubble { padding: 8px 12px; border-radius: 6px; line-height: 1.4; word-break: break-word; }
+        .chat-user { background: #3e4451; color: #fff; align-self: flex-end; max-width: 85%; }
+        .chat-ai { background: #282c34; border: 1px solid #3e4451; color: #abb2bf; align-self: flex-start; max-width: 95%; }
         .action-log { color: #98c379; font-family: monospace; font-size: 11px; margin-top: 4px; display: block; }
-        #agent-input-area { padding: 10px; background: #282c34; border-top: 1px solid #181a1f; display: flex; flex-direction: column; gap: 6px; }
-        #agent-input { width: 100%; height: 60px; background: #1e2227; border: 1px solid #3e4451; color: #fff; padding: 6px; font-size: 12px; border-radius: 3px; resize: none; outline: none; }
-        #agent-send-btn { background: #c678dd; color: #fff; border: none; padding: 7px; font-size: 12px; font-weight: bold; border-radius: 3px; cursor: pointer; }
+        #agent-input-area { padding: 10px; background: #282c34; border-top: 1px solid #181a1f; display: flex; flex-direction: column; gap: 8px; }
+        #agent-input { width: 100%; height: 70px; background: #1e2227; border: 1px solid #3e4451; color: #fff; padding: 8px; font-size: 12px; border-radius: 4px; resize: none; outline: none; }
+        #agent-send-btn { background: #c678dd; color: #fff; border: none; padding: 8px; font-size: 12px; font-weight: bold; border-radius: 4px; cursor: pointer; transition: 0.2s; }
         #agent-send-btn:hover { background: #d896ea; }
-        #workspace-area { flex: 1; display: flex; flex-direction: column; height: 100vh; }
-        #tabs-bar { height: 35px; background: #252526; display: flex; align-items: center; padding-left: 10px; border-bottom: 1px solid #1e1e1e; font-size: 13px; color: #fff; }
+
+        /* 3. メインエディタ領域 */
+        #workspace-area { flex: 1; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+        #tabs-bar { height: 35px; background: #252526; display: flex; align-items: center; justify-content: space-between; padding-right: 10px; border-bottom: 1px solid #1e1e1e; }
+        .tab { height: 100%; padding: 0 16px; background: #1e1e1e; color: #fff; display: flex; align-items: center; gap: 8px; font-size: 13px; border-top: 2px solid #007acc; }
         #monaco-editor { flex: 1; }
-        #terminal-panel { height: 180px; background: #141414; border-top: 1px solid #333; display: flex; flex-direction: column; font-family: monospace; }
-        #terminal-header { height: 24px; background: #1e1e1e; padding: 0 10px; font-size: 11px; display: flex; align-items: center; justify-content: space-between; color: #aaa; }
-        #terminal-body { flex: 1; padding: 8px; overflow-y: auto; font-size: 12px; color: #d4d4d4; white-space: pre-wrap; }
-        #terminal-input-line { display: flex; padding: 4px 8px; background: #181818; }
-        #cmd-input { flex: 1; background: transparent; border: none; color: #fff; font-family: inherit; font-size: 12px; outline: none; }
+
+        /* 4. 下部ターミナル */
+        #terminal-panel { height: 180px; background: #141414; border-top: 1px solid #333; display: flex; flex-direction: column; font-family: "Consolas", monospace; }
+        #terminal-header { height: 26px; background: #1e1e1e; display: flex; align-items: center; justify-content: space-between; padding: 0 12px; font-size: 11px; font-weight: bold; color: #aaa; border-bottom: 1px solid #2a2a2a; }
+        #terminal-body { flex: 1; padding: 8px 12px; overflow-y: auto; font-size: 12px; color: #d4d4d4; white-space: pre-wrap; }
+        #terminal-input-line { display: flex; align-items: center; background: #181818; padding: 4px 10px; border-top: 1px solid #282828; }
+        #cmd-input { flex: 1; background: transparent; border: none; color: #fff; font-family: inherit; font-size: 12px; outline: none; margin-left: 6px; }
     </style>
 </head>
 <body>
+
+    <!-- 1. Activity Bar -->
     <div id="activity-bar">
-        <div class="act-btn active" id="btn-explorer" title="Explorer"><i class="fa-regular fa-copy"></i></div>
-        <div class="act-btn ai-btn active" id="btn-agent" title="AI Agent (IDE自動操縦)"><i class="fa-solid fa-wand-magic-sparkles"></i></div>
+        <div class="act-btn active" id="btn-toggle-explorer" title="Explorer (ファイル一覧)"><i class="fa-regular fa-copy"></i></div>
+        <div class="act-btn ai-btn" id="btn-toggle-agent" title="AI Agent (自動操縦)"><i class="fa-solid fa-wand-magic-sparkles"></i></div>
     </div>
-    <div id="sidebar">
-        <div id="sidebar-header">
-            <span>EXPLORER</span>
-            <i class="fa-solid fa-rotate" id="btn-refresh" style="cursor:pointer;" title="更新"></i>
+
+    <!-- 2. サイドバー (切り替え ＆ 折りたたみ式) -->
+    <div id="sidebar-container">
+        <!-- Explorer View -->
+        <div id="explorer-view">
+            <div class="sidebar-header">
+                <span>EXPLORER</span>
+                <div class="sidebar-actions">
+                    <i class="fa-solid fa-file-circle-plus" id="btn-new-file" title="新規ファイル"></i>
+                    <i class="fa-solid fa-rotate" id="btn-refresh" title="更新"></i>
+                </div>
+            </div>
+            <ul id="file-tree"></ul>
         </div>
-        <ul id="file-tree"></ul>
+
+        <!-- AI Agent View -->
+        <div id="agent-view">
+            <div class="sidebar-header" style="color:#c678dd;">
+                <span><i class="fa-solid fa-robot"></i> IDE AUTO-AGENT</span>
+            </div>
+            <div id="agent-settings">
+                <label style="color:#888;">AI Model:</label>
+                <select id="agent-model">
+                    <option value="qwen/qwen-2.5-coder-32b-instruct:free" selected>Qwen 2.5 Coder (最強)</option>
+                    <option value="deepseek/deepseek-r1:free">DeepSeek R1 (推論・デバッグ)</option>
+                    <option value="meta-llama/llama-3.3-70b-instruct:free">Llama 3.3 70B (超安定)</option>
+                    <option value="mistralai/mistral-nemo:free">Mistral Nemo (爆速)</option>
+                </select>
+            </div>
+            <div id="agent-messages">
+                <div class="chat-bubble chat-ai">指示を入力すると、ファイル作成・コード記述・ビルド実行まで**IDEを自動操作**します。</div>
+            </div>
+            <div id="agent-input-area">
+                <textarea id="agent-input" placeholder="例: C#で数当てゲームを作って動かして (Ctrl+Enterで送信)"></textarea>
+                <button id="agent-send-btn"><i class="fa-solid fa-bolt"></i> 自動操縦でアプリ作成</button>
+            </div>
+        </div>
     </div>
-    <div id="agent-panel">
-        <div id="agent-header"><span><i class="fa-solid fa-robot"></i> IDE AUTO-AGENT</span></div>
-        <div id="agent-settings">
-            <select id="agent-model">
-                <option value="qwen/qwen-2.5-coder-32b-instruct:free" selected>Qwen 2.5 Coder (最強)</option>
-                <option value="deepseek/deepseek-r1:free">DeepSeek R1 (推論・デバッグ)</option>
-                <option value="meta-llama/llama-3.3-70b-instruct:free">Llama 3.3 70B (超安定)</option>
-                <option value="mistralai/mistral-nemo:free">Mistral Nemo (爆速)</option>
-            </select>
-        </div>
-        <div id="agent-messages">
-            <div class="chat-ai">指示を出してください。ファイル作成、コード記述、ターミナルでのビルド実行まで**IDEを全自動操作**します。</div>
-        </div>
-        <div id="agent-input-area">
-            <textarea id="agent-input" placeholder="例: C#で数当てゲームを作って動かして (Ctrl+Enterで送信)"></textarea>
-            <button id="agent-send-btn"><i class="fa-solid fa-bolt"></i> 自動操縦でアプリ作成</button>
-        </div>
-    </div>
+
+    <!-- 3. メインエディタ領域 -->
     <div id="workspace-area">
-        <div id="tabs-bar"><span id="tab-title">ファイルを選択してください</span></div>
+        <div id="tabs-bar">
+            <div class="tab">
+                <i class="fa-solid fa-code"></i>
+                <span id="tab-filename">読み込み中...</span>
+            </div>
+        </div>
         <div id="monaco-editor"></div>
         <div id="terminal-panel">
-            <div id="terminal-header"><span>TERMINAL OUTPUT</span><span id="btn-clear-term" style="cursor:pointer;"><i class="fa-solid fa-ban"></i></span></div>
+            <div id="terminal-header">
+                <span>TERMINAL</span>
+                <span id="btn-clear-term" style="cursor:pointer;" title="クリア"><i class="fa-solid fa-ban"></i></span>
+            </div>
             <div id="terminal-body">// ターミナル準備完了</div>
             <div id="terminal-input-line">
-                <span style="color:#4ec9b0; margin-right:6px;">alpine#</span>
+                <span style="color:#4ec9b0; font-weight:bold;">alpine#</span>
                 <input type="text" id="cmd-input" placeholder="手動コマンド入力..." autocomplete="off" />
             </div>
         </div>
@@ -90,17 +133,62 @@
         let editor, activePath = "";
         const termBody = document.getElementById("terminal-body");
 
+        // ★★★ サイドバーの切り替え ＆ 完全折りたたみ制御 ★★★
+        const sidebar = document.getElementById('sidebar-container');
+        const explorerView = document.getElementById('explorer-view');
+        const agentView = document.getElementById('agent-view');
+        const btnExplorer = document.getElementById('btn-toggle-explorer');
+        const btnAgent = document.getElementById('btn-toggle-agent');
+        let currentTab = "explorer";
+
+        function switchSidebar(tab) {
+            if (currentTab === tab && sidebar.style.display !== 'none') {
+                // 同じアイコンを押したら折りたたむ（エディタ全画面化）
+                sidebar.style.display = 'none';
+                btnExplorer.classList.remove('active');
+                btnAgent.classList.remove('active');
+                return;
+            }
+
+            sidebar.style.display = 'flex';
+            currentTab = tab;
+
+            if (tab === 'explorer') {
+                explorerView.style.display = 'flex';
+                agentView.style.display = 'none';
+                btnExplorer.classList.add('active');
+                btnAgent.classList.remove('active');
+            } else {
+                explorerView.style.display = 'none';
+                agentView.style.display = 'flex';
+                btnAgent.classList.add('active');
+                btnExplorer.classList.remove('active');
+            }
+            if (editor) editor.layout();
+        }
+
+        btnExplorer.onclick = () => switchSidebar('explorer');
+        btnAgent.onclick = () => switchSidebar('agent');
+
+        // Monaco Editor 初期化
         require.config({ paths: { vs: 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs' } });
         require(['vs/editor/editor.main'], function () {
             editor = monaco.editor.create(document.getElementById('monaco-editor'), {
-                value: '// IDE Ready',
+                value: '// ファイルを開いてください',
                 language: 'plaintext',
                 theme: 'vs-dark',
                 automaticLayout: true,
                 fontSize: 14
             });
-            editor.onDidChangeModelContent(() => { if (activePath) setTimeout(saveFile, 500); });
-            loadTree();
+
+            let saveTimer;
+            editor.onDidChangeModelContent(() => {
+                if (!activePath) return;
+                clearTimeout(saveTimer);
+                saveTimer = setTimeout(saveFile, 500);
+            });
+
+            loadTree(true); // 初回起動
         });
 
         async function saveFile() {
@@ -112,53 +200,80 @@
             });
         }
 
-        async function loadTree() {
-            const res = await fetch('/api/files');
-            const files = await res.json();
-            const tree = document.getElementById('file-tree');
-            tree.innerHTML = "";
-            if (!files) return;
-            files.forEach(f => {
-                if (f.isDir) return;
-                const li = document.createElement('li');
-                li.className = 'tree-item' + (f.path === activePath ? ' active' : '');
-                li.innerHTML = `<span>${f.path}</span><i class="fa-solid fa-trash del"></i>`;
-                li.onclick = () => openFile(f.path);
-                li.querySelector('.del').onclick = async (e) => {
-                    e.stopPropagation();
-                    if (confirm(`削除: ${f.path}?`)) {
-                        await fetch('/api/delete', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ path: f.path }) });
-                        loadTree();
-                    }
-                };
-                tree.appendChild(li);
+        // ファイルツリーの読み込み
+        async function loadTree(openFirst = false) {
+            try {
+                const res = await fetch('/api/files');
+                const files = await res.json();
+                const tree = document.getElementById('file-tree');
+                tree.innerHTML = "";
+                if (!files || files.length === 0) return;
+
+                files.forEach(f => {
+                    if (f.isDir) return;
+                    const li = document.createElement('li');
+                    li.className = 'tree-item' + (f.path === activePath ? ' active' : '');
+                    li.innerHTML = `<span>${f.path}</span><i class="fa-solid fa-trash del" title="削除"></i>`;
+                    li.onclick = () => openFile(f.path);
+                    li.querySelector('.del').onclick = async (e) => {
+                        e.stopPropagation();
+                        if (confirm(`本当に "${f.path}" を削除しますか？`)) {
+                            await fetch('/api/delete', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ path: f.path }) });
+                            loadTree();
+                        }
+                    };
+                    tree.appendChild(li);
+                });
+
+                // ★ 初回起動時：Program.cs か最初のファイルを確実に開く
+                if (openFirst && !activePath && files.length > 0) {
+                    const target = files.find(f => f.name === 'Program.cs') || files[0];
+                    openFile(target.path);
+                }
+            } catch(e) {
+                console.error(e);
+            }
+        }
+
+        // ★ ファイルの中身を確実に読み込む
+        async function openFile(path) {
+            activePath = path;
+            document.getElementById('tab-filename').innerText = path;
+            
+            try {
+                const res = await fetch(`/api/load?path=${encodeURIComponent(path)}`);
+                const content = await res.text();
+                
+                const ext = path.split('.').pop().toLowerCase();
+                const langs = { cs:'csharp', py:'python', go:'go', rs:'rust', js:'javascript', html:'html', svg:'xml', xml:'xml' };
+                
+                const oldModel = editor.getModel();
+                if (oldModel) oldModel.dispose();
+                const newModel = monaco.editor.createModel(content, langs[ext] || 'plaintext');
+                editor.setModel(newModel);
+            } catch(e) {
+                console.error("ファイル読み込みエラー:", e);
+            }
+
+            document.querySelectorAll('.tree-item').forEach(el => {
+                const span = el.querySelector('span');
+                if (span) el.classList.toggle('active', span.innerText === path);
             });
         }
 
-        async function openFile(path) {
-            activePath = path;
-            document.getElementById('tab-title').innerText = path;
-            const res = await fetch(`/api/load?path=${encodeURIComponent(path)}`);
-            const content = await res.text();
-            const ext = path.split('.').pop().toLowerCase();
-            const langs = { cs:'csharp', py:'python', go:'go', rs:'rust', js:'javascript', html:'html' };
-            const model = monaco.editor.createModel(content, langs[ext] || 'plaintext');
-            editor.setModel(model);
-            loadTree();
-        }
+        document.getElementById('btn-new-file').onclick = async () => {
+            const name = prompt("新規ファイル名 (例: test.py, main.cs):");
+            if (name) {
+                await fetch('/api/create', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ path: name, isDir: false }) });
+                await loadTree();
+                openFile(name);
+            }
+        };
 
-        document.getElementById('btn-refresh').onclick = loadTree;
+        document.getElementById('btn-refresh').onclick = () => loadTree();
         document.getElementById('btn-clear-term').onclick = () => termBody.innerText = "";
-        document.getElementById('btn-explorer').onclick = () => {
-            const el = document.getElementById('sidebar');
-            el.style.display = el.style.display === 'none' ? 'flex' : 'none';
-        };
-        document.getElementById('btn-agent').onclick = () => {
-            const el = document.getElementById('agent-panel');
-            el.style.display = el.style.display === 'none' ? 'flex' : 'none';
-        };
 
-        // ターミナル
+        // 手動ターミナル
         document.getElementById('cmd-input').onkeydown = async (e) => {
             if (e.key === 'Enter') {
                 const cmd = e.target.value.trim();
@@ -172,7 +287,7 @@
             }
         };
 
-        // ★★★ 本物のIDE自動操縦エージェント (Agent Execution Engine) ★★★
+        // ★★★ AI IDE自動操縦エージェント実行 ★★★
         document.getElementById('agent-send-btn').onclick = runAgent;
         document.getElementById('agent-input').onkeydown = (e) => {
             if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
@@ -188,10 +303,10 @@
             if (!prompt) return;
 
             const msgBox = document.getElementById('agent-messages');
-            msgBox.innerHTML += `<div class="chat-user">${prompt}</div>`;
+            msgBox.innerHTML += `<div class="chat-bubble chat-user">${prompt}</div>`;
             const aiMsg = document.createElement('div');
-            aiMsg.className = 'chat-ai';
-            aiMsg.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> IDE操作プランを思考中...';
+            aiMsg.className = 'chat-bubble chat-ai';
+            aiMsg.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> IDE自動操作プランを考案中...';
             msgBox.appendChild(aiMsg);
             input.value = "";
             msgBox.scrollTop = msgBox.scrollHeight;
@@ -228,48 +343,35 @@
                 const rawText = data.choices[0].message.content;
                 const jsonMatch = rawText.match(/\[[\s\S]*\]/);
                 if (!jsonMatch) {
-                    aiMsg.innerHTML = `<div>プラン解析失敗。直接出力:</div><pre style="font-size:10px;">${rawText}</pre>`;
+                    aiMsg.innerHTML = `<div>直接出力:</div><pre style="font-size:11px;">${rawText}</pre>`;
                     return;
                 }
 
                 const actions = JSON.parse(jsonMatch[0]);
-                aiMsg.innerHTML = '<strong>🚀 IDE自動操縦を開始:</strong>';
+                aiMsg.innerHTML = '<strong>🚀 IDE自動操作を実行中:</strong>';
 
                 for (const act of actions) {
                     if (act.action === "create") {
-                        aiMsg.innerHTML += `<span class="action-log">📁 作成中: ${act.path}</span>`;
-                        await fetch('/api/create', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ path: act.path, isDir: false })
-                        });
+                        aiMsg.innerHTML += `<span class="action-log">📁 作成: ${act.path}</span>`;
+                        await fetch('/api/create', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ path: act.path, isDir: false }) });
                         await loadTree();
                     } else if (act.action === "write") {
-                        aiMsg.innerHTML += `<span class="action-log">✍ 書込中: ${act.path}</span>`;
-                        await fetch('/api/save', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ path: act.path, content: act.content })
-                        });
+                        aiMsg.innerHTML += `<span class="action-log">✍ 書込: ${act.path}</span>`;
+                        await fetch('/api/save', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ path: act.path, content: act.content }) });
                         await openFile(act.path);
                     } else if (act.action === "cmd") {
-                        aiMsg.innerHTML += `<span class="action-log">⚡ 実行中: ${act.command}</span>`;
+                        aiMsg.innerHTML += `<span class="action-log">⚡ コマンド実行: ${act.command}</span>`;
                         termBody.innerText += `\n[Agent Exec] ${act.command}\n`;
-                        const cmdRes = await fetch('/api/cmd', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ cmd: act.command })
-                        });
-                        const cmdOut = await cmdRes.text();
-                        termBody.innerText += cmdOut + "\n";
+                        const cmdRes = await fetch('/api/cmd', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ cmd: act.command }) });
+                        termBody.innerText += await cmdRes.text() + "\n";
                         termBody.scrollTop = termBody.scrollHeight;
                     }
                     msgBox.scrollTop = msgBox.scrollHeight;
                 }
 
-                aiMsg.innerHTML += '<span class="action-log" style="color:#4ec9b0; font-weight:bold;">✔ 全操作が完了しました！</span>';
+                aiMsg.innerHTML += '<span class="action-log" style="color:#4ec9b0; font-weight:bold;">✔ すべての自動操作が完了しました！</span>';
             } catch (err) {
-                aiMsg.innerHTML = `<span style="color:#e06c75;">実行エラー: ${err}</span>`;
+                aiMsg.innerHTML = `<span style="color:#e06c75;">通信エラー: ${err}</span>`;
             }
         }
     </script>
