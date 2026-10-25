@@ -108,14 +108,12 @@
             <i class="fa-solid fa-xmark" id="btn-close-copilot" style="cursor:pointer;" title="閉じる"></i>
         </div>
         <div id="copilot-settings">
-            <label style="color:#aaa;">AI Model (稼働中無料モデル):</label>
+            <label style="color:#aaa;">AI Model (動的自動取得中...):</label>
             <select id="agent-model">
-                <option value="recursive/flint:free" selected>Recursive Flint (無料・コード特化エージェント)</option>
-                <option value="google/gemini-2.0-flash-exp:free">Gemini 2.0 Flash (無料・爆速)</option>
-                <option value="meta-llama/llama-3.2-3b-instruct:free">Llama 3.2 3B (無料・軽量版)</option>
-                <option value="custom">-- 直接モデル名を入力 --</option>
+                <option value="google/gemini-2.0-flash-exp:free" selected>Gemini 2.0 Flash (完全無料・推奨)</option>
+                <option value="meta-llama/llama-3.2-3b-instruct:free">Llama 3.2 3B (完全無料)</option>
             </select>
-            <input type="text" id="custom-model" placeholder="例: deepseek/deepseek-chat:free" style="display:none;" />
+            <input type="text" id="custom-model" placeholder="直接モデル名を入力 (例: google/gemini-2.0-flash-exp:free)" style="display:none;" />
             <label class="setting-checkbox">
                 <input type="checkbox" id="allow-cmd-exec" checked />
                 <span>コマンドの自動実行を許可する</span>
@@ -138,9 +136,37 @@
         const copilotPanel = document.getElementById('copilot-panel');
         const btnExplorer = document.getElementById('btn-toggle-explorer');
         const btnCopilot = document.getElementById('btn-toggle-copilot');
+        const modelSelect = document.getElementById('agent-model');
 
-        // モデル選択で「直接入力」が選ばれたらテキストボックスを表示
-        document.getElementById('agent-model').onchange = (e) => {
+        // ★ OpenRouter公式APIから「現在利用可能な無料モデル一覧」をリアルタイム自動取得
+        async function fetchFreeModels() {
+            try {
+                const res = await fetch("https://openrouter.ai/api/v1/models");
+                const data = await res.json();
+                if (data && data.data) {
+                    const freeModels = data.data.filter(m => m.id.endsWith(":free") || (m.pricing && m.pricing.prompt === "0" && m.pricing.completion === "0"));
+                    if (freeModels.length > 0) {
+                        modelSelect.innerHTML = "";
+                        freeModels.forEach(m => {
+                            const opt = document.createElement("option");
+                            opt.value = m.id;
+                            opt.textContent = `${m.name || m.id} (無料)`;
+                            if (m.id.includes("gemini")) opt.selected = true; // Geminiをデフォルト優先
+                            modelSelect.appendChild(opt);
+                        });
+                        const customOpt = document.createElement("option");
+                        customOpt.value = "custom";
+                        customOpt.textContent = "-- 直接モデル名を入力 --";
+                        modelSelect.appendChild(customOpt);
+                    }
+                }
+            } catch(e) {
+                console.log("モデル一覧取得スキップ:", e);
+            }
+        }
+        fetchFreeModels();
+
+        modelSelect.onchange = (e) => {
             document.getElementById('custom-model').style.display = e.target.value === 'custom' ? 'block' : 'none';
         };
 
@@ -327,7 +353,7 @@
         async function runAgent(prompt) {
             let model = document.getElementById('agent-model').value;
             if (model === 'custom') {
-                model = document.getElementById('custom-model').value.trim() || 'recursive/flint:free';
+                model = document.getElementById('custom-model').value.trim() || 'google/gemini-2.0-flash-exp:free';
             }
             const allowCmd = document.getElementById('allow-cmd-exec').checked;
 
